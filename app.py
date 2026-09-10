@@ -1026,7 +1026,7 @@ def render_dashboard():
         if quarter_complete and k3_visits < 3:
             drivers.append(f"quarterly engagements are {k3_visits}/3")
         elif not quarter_complete:
-            drivers.append(f"{quarter_label} remains in progress with {k3_visits}/3 engagements recorded")
+            drivers.append(f"Q{q} remains in progress with {k3_visits}/3 engagements recorded")
         drivers.append(f"{len(k3_teams)}/18 NUI teams engaged")
         notes.append("KPI 3: " + "; ".join(drivers) + ".")
     elif k3_status=="Needs review":
