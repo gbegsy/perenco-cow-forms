@@ -290,14 +290,16 @@ def render_dashboard():
     k3_question_conf=question_conformance(lead)
     if not lead or k3_conf is None:
         k3_status="Not enough data"
+    elif not quarter_complete:
+        k3_status="In progress"
     elif k3_conf<70:
         k3_status="Red"
     elif k3_visits>=3 and k3_conf>=90:
         k3_status="Green"
-    elif quarter_complete:
-        k3_status="Amber" if k3_visits==2 else "Red"
+    elif k3_visits==2:
+        k3_status="Amber"
     else:
-        k3_status="In progress"
+        k3_status="Red"
 
     # KPI 4 - audit-level conformance and role-based visit delivery.
     # Do not traffic-light the KPI while submitted TBT records remain unmapped.
@@ -361,7 +363,7 @@ def render_dashboard():
     if k1_status in ("Amber","Red"): notes.append(f"KPI 1 is {k1_status}: review Site Controller sampling delivery and permit conformance.")
     if k2_status in ("Amber","Red"): notes.append(f"KPI 2 is {k2_status}: review Asset Superintendent sampling delivery and permit conformance.")
     if k3_status in ("Amber","Red"): notes.append(f"KPI 3 is {k3_status}: review quarterly engagement volume, checklist conformance and NUI coverage.")
-    elif k3_status=="In progress": notes.append(f"KPI 3: Q{q} is in progress — {k3_visits} of 3 engagements completed with {k3_conf if k3_conf is not None else '—'}% checklist conformance.")
+    elif k3_status=="In progress": notes.append(f"KPI 3: Q{q} is in progress — {k3_visits} of 3 engagements completed; {k3_conf if k3_conf is not None else '—'}% of completed checklists currently meet the CoW standard.")
     if k4_status in ("Amber","Red"): notes.append(f"KPI 4 is {k4_status}: review site leadership visit delivery and Level 4 monitoring conformance.")
     elif k4_status=="In progress": notes.append(f"KPI 4: reporting period is in progress; weekly visit delivery and conformance are on track, with Field Hub OIM quarter delivery still open.")
     if not notes: notes.append("No intervention statement is generated until sufficient mapped data is available, or all calculated KPIs are Green.")
@@ -386,7 +388,7 @@ def render_dashboard():
             b.metric("Checklists meeting CoW standard",f"{k3_conf}%" if k3_conf is not None else "—")
             a.metric("Locations / teams",len(set(x["site"] for x in lead if x["site"])) if lead else "—")
             b.metric("Quarter",f"Q{q} · {'Complete' if quarter_complete else 'In progress'}" if lead else "—")
-            st.caption("Checklist compliance uses the form’s Overall Control of Work Indicator. Quarterly visit delivery is shown as in progress until the quarter has actually ended.")
+            st.caption("Checklist compliance uses the form’s Overall Control of Work Indicator. The KPI remains In progress until the quarter has actually ended; the current checklist result is shown separately for management attention.")
 
         with c2:
             st.subheader("KPI 2 – Asset Superintendent")
@@ -402,7 +404,7 @@ def render_dashboard():
             a.metric("W2W OOE",f"{role_counts['W2W OOE']} / {wks}" if mapping_ready else "Not mapped")
             b.metric("Medic / HSEA",f"{role_counts['Medic HSEA']} / {wks}" if mapping_ready else "Not mapped")
             a.metric("Field Hub OIM",f"{q_field_oim} / 1 quarter" if mapping_ready else "Not mapped")
-            b.metric("Level 4 audit conformance",f"{k4_conf}%" if k4_conf is not None else "—")
+            b.metric("Level 4 audit conformance",f"{k4_conf}%" if (mapping_ready and k4_conf is not None) else "—")
             st.caption("KPI 4 uses completed Level 4 audits as the compliance basis. Field Hub OIM is assessed against the quarterly target; the two-consecutive-quarter Red rule is applied where history is available.")
 
     with tab2:
