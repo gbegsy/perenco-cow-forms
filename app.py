@@ -629,7 +629,7 @@ def render_dashboard():
         clear_demo_data()
         st.success("Synthetic UAT dataset cleared.")
         st.rerun()
-    st.caption("UAT tools · synthetic DEMO-* records only · KPI logic aligned to Perenco CoW KPI Specification July 2026")
+    st.caption("UAT mode · synthetic DEMO-* records only · KPI logic aligned to Perenco CoW KPI Specification July 2026")
 
     audits=load_audits()
     if not audits:
@@ -852,7 +852,7 @@ def render_dashboard():
         elif not mapping_ready:
             k4_detail="No valid KPI 4 role-mapped audits yet."
         else:
-            k4_detail=f"Visits: OOE {role_counts['W2W OOE']}/{wks} · Medic/HSEA {role_counts['Medic HSEA']}/{wks} · Field OIM {q_field_oim}/1"
+            k4_detail=f"OOE {role_counts['W2W OOE']}/{wks} · Medic/HSEA {role_counts['Medic HSEA']}/{wks} · Field OIM {q_field_oim}/1"
             if tbt_unmapped:
                 k4_detail += f" | {len(tbt_unmapped)} unmapped audit(s) excluded"
         kpi_card("KPI 4 | TIER 3","Site Leadership NUI Visits","—" if k4_status=="Not enough data" else f"{k4_conf}%",k4_status,k4_detail)
@@ -886,15 +886,34 @@ def render_dashboard():
     st.markdown('<div class="dash-section-label">Performance detail & evidence</div>',unsafe_allow_html=True)
     tab1,tab2,tab3,tab4,tab5=st.tabs(["KPI Detail","Non-Compliances & SMART Actions","Weakest Questions","Audit Trail","KPI 5 Incidents"])
     with tab1:
+        with st.expander("KPI Criteria", expanded=False):
+            st.markdown("""
+**KPI 1 – Site Controller (Tier 3)**  
+Site-specific weekly routine/non-routine permit sampling. Green: ≥100% required audits completed **and** ≥90% audit conformance. Amber: 70–90% completion and/or 70–89% conformance. Red: <70% completion and/or <70% conformance.
+
+**KPI 2 – Asset Superintendent (Tier 2)**  
+Minimum 1 permit audit per week on a rotational basis. Same completion/conformance thresholds as KPI 1. Review also considers site self-verification performance against independent assurance findings.
+
+**KPI 3 – Onshore Leadership (Tier 2)**  
+Minimum 3 NUI engagements per quarter. Green also requires 90–100% checklist compliance and reasonable NUI coverage. Amber: 2 engagements and/or 70–89% compliance and/or over/under coverage. Red: 1 or fewer engagements and/or <70% compliance.
+
+**KPI 4 – Site Leadership (Tier 3)**  
+W2W OOE: minimum 1/week. Medic/HSEA: minimum 1/week. Field Hub OIM: minimum 1/quarter. Level 4 monitoring: Green ≥90%, Amber 70–89%, Red <70%. Missed-visit justification, NUI coverage, repeat/significant findings and Field Hub OIM missed-quarter rules also affect status.
+
+**KPI 5 – Permit-Controlled Incidents (Tier 1)**  
+Rolling 12-month MOI trend. Green: no increase and no serious/repeat trigger. Amber: increasing trend or a single HiPO, significant injury, Loss of Containment or repeat event theme. Red: significant increase, multiple serious events, major Loss of Containment or recurring permit-control failure.
+""")
         c1,c2=st.columns(2)
         with c1:
             st.markdown("### KPI 1 · Site Controller")
             a,b=st.columns(2)
             a.metric("Audits completed",len(sc) if sc else "—")
-            b.metric("Planned audits",k1_plan if k1_plan else "—")
+            b.metric("Required audits for selected period",k1_plan if k1_plan else "—")
             a.metric("Plan completion",f"{k1_pct}%" if k1_pct is not None else "—")
             b.metric("Audit conformance",f"{k1_conf}%" if k1_conf is not None else "—")
-            st.caption(f"Perenco: site-specific weekly routine/non-routine sampling. Green ≥100% plan AND ≥90% conformance; Amber 70–90% plan and/or 70–89% conformance; Red <70% plan and/or <70% conformance. Reporting weeks: {wks}.")
+            if site=="All" and k1_plan:
+                st.caption("All sites selected: requirement is the aggregate of the seven Site Controller sampling groups in the KPI document.")
+            st.caption(f"Requirement calculated from the Perenco site-specific weekly sampling table for the selected reporting period ({wks} reporting weeks).")
 
             st.markdown("### KPI 3 · Onshore Leadership")
             a,b=st.columns(2)
@@ -902,16 +921,16 @@ def render_dashboard():
             b.metric("Checklists meeting CoW standard",f"{k3_conf}%" if k3_conf is not None else "—")
             a.metric("Locations / teams",len(set(x["site"] for x in lead if x["site"])) if lead else "—")
             b.metric("Quarter",f"Q{q} · {'Complete' if quarter_complete else 'In progress'}" if lead else "—")
-            st.caption(f"Perenco: Green ≥3 engagements + 90–100% compliance + reasonable coverage; Amber 2 engagements and/or 70–89% compliance and/or over/under coverage; Red ≤1 engagement and/or <70% compliance. Coverage: {gov['kpi3_coverage']}.")
+            st.caption(f"Quarterly target: minimum 3 engagements. NUI coverage assessment: {gov['kpi3_coverage']}.")
 
         with c2:
             st.markdown("### KPI 2 · Asset Superintendent")
             a,b=st.columns(2)
             a.metric("Audits completed",len(asc) if asc else "—")
-            b.metric("Planned audits",k2_plan)
+            b.metric("Required audits for selected period",k2_plan)
             a.metric("Plan completion",f"{k2_pct}%" if k2_pct is not None else "—")
             b.metric("Audit conformance",f"{k2_conf}%" if k2_conf is not None else "—")
-            st.caption(f"Perenco: minimum 1 permit audit per week on a rotational basis. Same plan/conformance thresholds as KPI 1. Site self-verification vs independent assurance: {gov['kpi2_assurance_comparison']}.")
+            st.caption(f"Minimum 1 permit audit per week on a rotational basis. Self-verification vs independent assurance: {gov['kpi2_assurance_comparison']}.")
 
             st.markdown("### KPI 4 · Site Leadership")
             a,b=st.columns(2)
@@ -919,7 +938,7 @@ def render_dashboard():
             b.metric("Medic / HSEA",f"{role_counts['Medic HSEA']} / {wks} ({medp}%)" if mapping_ready else "Not mapped")
             a.metric("Field Hub OIM",f"{q_field_oim} / 1 quarter" if mapping_ready else "Not mapped")
             b.metric("Level 4 audit conformance",f"{k4_conf}%" if (mapping_ready and k4_conf is not None) else "—")
-            st.caption(f"Perenco: OOE Green ≥100%, Amber 50–99%, Red <50%; Medic/HSEA Green ≥100%, Amber 75–99%, Red <50% (50–74% is not classified in the source table); Field Hub OIM ≥1/quarter with reasonable coverage; Level 4 Green ≥90%, Amber 70–89%, Red <70%. Justification: {gov['kpi4_visit_justification']}; OIM coverage: {gov['kpi4_field_oim_coverage']}; finding profile: {gov['kpi4_finding_profile']}.")
+            st.caption(f"Role-based visit delivery and Level 4 conformance are assessed against the Perenco KPI thresholds. Justification: {gov['kpi4_visit_justification']}; OIM coverage: {gov['kpi4_field_oim_coverage']}; finding profile: {gov['kpi4_finding_profile']}.")
 
     with tab2:
         findings=[]
