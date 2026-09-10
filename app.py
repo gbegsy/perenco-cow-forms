@@ -1189,8 +1189,51 @@ Rolling 12-month MOI trend. Green: no increase and no serious/repeat trigger. Am
             b.metric("Sites with audit activity",covered)
             c.metric("Sites with no audit activity",7-covered)
 
-            st.dataframe(site_df,use_container_width=True,hide_index=True)
-            st.caption("Site KPIs use the same KPI 1 weekly sampling requirements as the company calculation. This view shows where local assurance delivery or conformance requires intervention.")
+            st.markdown("#### Site Controller KPI 1 comparison")
+            st.caption("Seven-site comparison of planned sampling delivery and whole-permit conformance for the selected reporting period.")
+
+            site_display=site_df.copy()
+            site_display["Routine audits"]=site_display.apply(
+                lambda r:f'{r["Routine completed"]} of {r["Routine planned"]} planned',axis=1
+            )
+            site_display["Non-routine audits"]=site_display.apply(
+                lambda r:f'{r["Non-routine completed"]} of {r["Non-routine planned"]} planned',axis=1
+            )
+            site_display=site_display[
+                ["Site / Group","Routine audits","Non-routine audits",
+                 "Plan completion","Whole-permit conformance","Status"]
+            ]
+
+            st.dataframe(
+                site_display,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Site / Group":st.column_config.TextColumn("Site / Group",width="medium"),
+                    "Routine audits":st.column_config.TextColumn("Routine audits",width="medium"),
+                    "Non-routine audits":st.column_config.TextColumn("Non-routine audits",width="medium"),
+                    "Plan completion":st.column_config.TextColumn("Plan completion",width="small"),
+                    "Whole-permit conformance":st.column_config.TextColumn("Permit conformance",width="small"),
+                    "Status":st.column_config.TextColumn("RAG",width="small"),
+                },
+            )
+
+            red_sites=[r["Site / Group"] for r in site_rows if r["Status"]=="Red"]
+            amber_sites=[r["Site / Group"] for r in site_rows if r["Status"]=="Amber"]
+            no_data_sites=[r["Site / Group"] for r in site_rows if r["Status"]=="No data"]
+
+            if red_sites:
+                st.error("Sites requiring intervention: "+", ".join(red_sites))
+            if amber_sites:
+                st.warning("Sites requiring review: "+", ".join(amber_sites))
+            if no_data_sites:
+                st.info("No KPI 1 audit data recorded: "+", ".join(no_data_sites))
+
+            st.caption(
+                "Site KPIs use the same KPI 1 weekly sampling requirements as the company calculation. "
+                "The site comparison is diagnostic and does not create a separate KPI target. "
+                "Company and site results reconcile to the same assurance records."
+            )
 
         st.markdown("---")
         c1,c2=st.columns(2)
