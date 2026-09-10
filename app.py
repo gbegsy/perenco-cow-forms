@@ -1105,6 +1105,84 @@ Rolling 12-month MOI trend. Green: no increase and no serious/repeat trigger. Am
 """)
         c1,c2=st.columns(2)
         with c1:
+            st.markdown("### Company & Site Performance")
+            st.caption("Use the company view for the overall PUK position and the site view to see where assurance delivery and conformance are concentrated.")
+
+            company_tab, site_tab = st.tabs(["Company KPIs", "Site KPIs"])
+
+            with company_tab:
+                c1,c2,c3,c4=st.columns(4)
+                c1.metric("Site Controller groups","7")
+                c2.metric("KPI 1 planned audits",k1_plan if k1_plan is not None else "—")
+                c3.metric("KPI 2 asset coverage",f"{len(k2_coverage)} / 9")
+                c4.metric("Overall assurance position",overall)
+                st.caption("Company KPIs aggregate the applicable PUK sampling groups and leadership measures. KPI 2 remains a company-wide rotational requirement rather than a separate target for every site.")
+
+            with site_tab:
+                site_groups=[
+                    ("Dimlington",1,1),
+                    ("Cleeton",1,1),
+                    ("Ravenspurn North",1,1),
+                    ("Northern NUI's",2,1),
+                    ("Bacton",1,1),
+                    ("Leman 27BC",1,1),
+                    ("Southern NUI's",2,1),
+                ]
+
+                def site_kpi_name(v):
+                    x=str(v or "").strip().lower().replace("’","'")
+                    aliases={
+                        "dimlington":"Dimlington",
+                        "cleeton":"Cleeton",
+                        "ravenspurn north":"Ravenspurn North",
+                        "rn":"Ravenspurn North",
+                        "northern nui's":"Northern NUI's",
+                        "northern nuis":"Northern NUI's",
+                        "northern nui":"Northern NUI's",
+                        "bacton":"Bacton",
+                        "leman 27bc":"Leman 27BC",
+                        "leman 27b":"Leman 27BC",
+                        "27bc":"Leman 27BC",
+                        "27b":"Leman 27BC",
+                        "southern nui's":"Southern NUI's",
+                        "southern nuis":"Southern NUI's",
+                        "southern nui":"Southern NUI's",
+                    }
+                    return aliases.get(x,str(v or "").strip())
+
+                site_rows=[]
+                for site_name,rpw,npw in site_groups:
+                    sa=[x for x in permit if site_kpi_name(x.get("site"))==site_name]
+                    sr=[x for x in sa if permit_classification(x)=="Routine"]
+                    sn=[x for x in sa if permit_classification(x)=="Non-routine"]
+                    rplan=rpw*report_weeks
+                    nplan=npw*report_weeks
+                    total_plan=rplan+nplan
+                    pp=round(100*len(sa)/total_plan) if total_plan else None
+                    cf=audit_conformance(sa)
+                    rag=status_both(pp,cf) if pp is not None and cf is not None else "No data"
+                    site_rows.append({
+                        "Site / Group":site_name,
+                        "Routine completed":len(sr),
+                        "Routine planned":rplan,
+                        "Non-routine completed":len(sn),
+                        "Non-routine planned":nplan,
+                        "Plan completion":f"{pp}%" if pp is not None else "—",
+                        "Whole-permit conformance":f"{cf}%" if cf is not None else "—",
+                        "Status":rag,
+                    })
+
+                site_df=pd.DataFrame(site_rows)
+                covered=sum(1 for r in site_rows if (r["Routine completed"]+r["Non-routine completed"])>0)
+                a,b,c=st.columns(3)
+                a.metric("Site sampling coverage",f"{covered} of 7")
+                b.metric("Sites with audit activity",covered)
+                c.metric("Sites with no audit activity",7-covered)
+
+                st.dataframe(site_df,use_container_width=True,hide_index=True)
+                st.caption("Site KPIs use the same KPI 1 weekly sampling requirements as the company calculation. This view shows where local assurance delivery or conformance requires intervention.")
+
+            st.markdown("---")
             st.markdown("### KPI 1 · Site Controller")
             a,b=st.columns(2)
             a.metric("Audits completed",len(sc) if sc else "—")
