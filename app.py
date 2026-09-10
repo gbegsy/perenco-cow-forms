@@ -2,7 +2,7 @@
 import streamlit as st
 import json, sqlite3, uuid, base64
 from pathlib import Path
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import calendar
 import pandas as pd
 import streamlit.components.v1 as components
@@ -184,7 +184,7 @@ def render_dashboard():
     </style>
     """,unsafe_allow_html=True)
     st.markdown('<div class="dash-title">Control of Work KPI Dashboard</div>',unsafe_allow_html=True)
-    st.markdown('<div class="dash-sub">Live UAT view from submitted Streamlit assurance forms. No BAR weighting applied.</div>',unsafe_allow_html=True)
+    st.markdown('<div class="dash-sub">Control of Work Assurance – KPI Performance & Leadership Oversight</div>',unsafe_allow_html=True)
 
     audits=load_audits()
     if not audits:
@@ -211,7 +211,12 @@ def render_dashboard():
 
     # Quarterly leadership records
     q=((month-1)//3)+1
-    qmonths=range((q-1)*3+1,(q-1)*3+4)
+    qmonths=list(range((q-1)*3+1,(q-1)*3+4))
+    q_start=date(year,qmonths[0],1)
+    q_end=date(year,qmonths[-1],calendar.monthrange(year,qmonths[-1])[1])
+    today=date.today()
+    quarter_complete=today>q_end
+    quarter_current=(q_start<=today<=q_end)
     lead=[a for a in audits if "Leadership Engagement" in a["form_name"] and a["audit_date"] and datetime.fromisoformat(a["audit_date"]).year==year and datetime.fromisoformat(a["audit_date"]).month in qmonths and (site=="All" or a["site"]==site)]
 
     # Role mapping
@@ -219,8 +224,8 @@ def render_dashboard():
     tbt_names=sorted(set(a["auditor"] for a in audits if "Toolbox Talk" in a["form_name"] and a["auditor"]))
     lead_names=sorted(set(a["auditor"] for a in audits if "Leadership Engagement" in a["form_name"] and a["auditor"]))
 
-    with st.expander("Auditor / KPI role mapping",expanded=False):
-        st.caption("The approved forms capture a person’s name but not the KPI role. Map each person once; the mapping is saved in the UAT database.")
+    with st.expander("KPI Role Configuration",expanded=False):
+        st.caption("The approved forms capture the person’s name but not the KPI reporting role. Assign each person once so submitted assurance activity is attributed to the correct KPI.")
         pc1,pc2,pc3=st.columns(3)
         pmap=get_role_mapping("permit")
         with pc1:
@@ -273,38 +278,58 @@ def render_dashboard():
     k2_pct=round(100*len(asc)/k2_plan) if asc else None
     k2_status=status_both(k2_pct,k2_conf) if asc else "Not enough data"
 
-    # KPI 3
+    # KPI 3 - use the Leadership form's required Overall CoW Indicator.
+    # The source form states that one No/non-conformance makes the checklist "Does not meet CoW Standard".
     k3_visits=len(lead)
-    k3_conf=question_conformance(lead)
-    quarter_end_month=max(qmonths)
-    quarter_complete=(month==quarter_end_month)
-    if not lead:
+    k3_results=[]
+    for a in lead:
+        v=(a.get("summary") or a.get("metadata",{}).get("overall_indicator","")).strip().lower()
+        if v=="meets cow standard": k3_results.append(True)
+        elif v=="does not meet cow standard": k3_results.append(False)
+    k3_conf=round(100*sum(k3_results)/len(k3_results)) if k3_results else None
+    k3_question_conf=question_conformance(lead)
+    if not lead or k3_conf is None:
         k3_status="Not enough data"
-    elif k3_conf is not None and k3_conf<70:
+    elif k3_conf<70:
         k3_status="Red"
-    elif k3_visits>=3 and k3_conf is not None and k3_conf>=90:
+    elif k3_visits>=3 and k3_conf>=90:
         k3_status="Green"
-    elif quarter_complete and k3_visits<3:
-        k3_status="Red"
+    elif quarter_complete:
+        k3_status="Amber" if k3_visits==2 else "Red"
     else:
         k3_status="In progress"
 
-    # KPI 4
+    # KPI 4 - audit-level conformance and role-based visit delivery.
+    # Do not traffic-light the KPI while submitted TBT records remain unmapped.
     tmap=get_role_mapping("tbt")
+    tbt_all=[a for a in audits if "Toolbox Talk" in a["form_name"] and a["audit_date"] and (site=="All" or a["site"]==site)]
+    tbt_unmapped=[a for a in tbt if tmap.get(a["auditor"],"Unmapped")=="Unmapped"]
     role_counts={r:sum(1 for a in tbt if tmap.get(a["auditor"])==r) for r in ["W2W OOE","Medic HSEA","Field Hub OIM"]}
-    k4_conf=question_conformance(tbt)
+    q_tbt=[a for a in tbt_all if datetime.fromisoformat(a["audit_date"]).year==year and datetime.fromisoformat(a["audit_date"]).month in qmonths]
+    q_field_oim=sum(1 for a in q_tbt if tmap.get(a["auditor"])=="Field Hub OIM")
+    k4_conf=audit_conformance(tbt)
+    k4_question_conf=question_conformance(tbt)
     ooep=round(100*role_counts["W2W OOE"]/wks) if wks else None
     medp=round(100*role_counts["Medic HSEA"]/wks) if wks else None
-    mapped_weekly=[x for x in [ooep if any(tmap.get(a["auditor"])=="W2W OOE" for a in tbt) else None, medp if any(tmap.get(a["auditor"])=="Medic HSEA" for a in tbt) else None] if x is not None]
-    has_k4_mapping=any(tmap.get(a["auditor"]) in ("W2W OOE","Medic HSEA","Field Hub OIM") for a in tbt)
-    if not tbt or not has_k4_mapping:
+    has_any_k4_role=any(tmap.get(a["auditor"]) in ("W2W OOE","Medic HSEA","Field Hub OIM") for a in tbt)
+    mapping_ready=bool(tbt) and not tbt_unmapped and has_any_k4_role
+
+    # Prior-quarter Field Hub OIM count supports the two-consecutive-quarter Red rule.
+    prev_q_end=q_start-timedelta(days=1)
+    prev_q= ((prev_q_end.month-1)//3)+1
+    prev_qmonths=list(range((prev_q-1)*3+1,(prev_q-1)*3+4))
+    prev_q_field_oim=sum(1 for a in tbt_all if datetime.fromisoformat(a["audit_date"]).year==prev_q_end.year and datetime.fromisoformat(a["audit_date"]).month in prev_qmonths and tmap.get(a["auditor"])=="Field Hub OIM")
+
+    if not mapping_ready or k4_conf is None:
         k4_status="Not enough data"
-    elif k4_conf is not None and k4_conf<70:
+    elif k4_conf<70 or ooep<50 or medp<50:
         k4_status="Red"
-    elif mapped_weekly and min(mapped_weekly)<50:
+    elif q_field_oim==0 and quarter_complete and prev_q_field_oim==0:
         k4_status="Red"
-    elif k4_conf is not None and k4_conf>=90 and mapped_weekly and min(mapped_weekly)>=100:
+    elif k4_conf>=90 and ooep>=100 and medp>=100 and q_field_oim>=1:
         k4_status="Green"
+    elif not quarter_complete and k4_conf>=90 and ooep>=100 and medp>=100 and q_field_oim==0:
+        k4_status="In progress"
     else:
         k4_status="Amber"
 
@@ -318,10 +343,10 @@ def render_dashboard():
                  "Role map required." if not asc else f"{len(asc)}/{k2_plan} planned | {k2_conf if k2_conf is not None else '—'}% audit conformance")
     with cols[2]:
         kpi_card("KPI 3 | TIER 2","Onshore Leadership NUI Engagement","—" if not lead else f"{k3_visits} of 3",k3_status,
-                 "No quarter data." if not lead else f"{k3_conf if k3_conf is not None else '—'}% checklist conformance | Q{q} {'complete' if quarter_complete else 'in progress'}")
+                 "No quarter data." if not lead else f"{k3_conf if k3_conf is not None else '—'}% checklists meeting CoW standard | Q{q} {'complete' if quarter_complete else 'in progress'}")
     with cols[3]:
         kpi_card("KPI 4 | TIER 3","Site Leadership NUI Visits","—" if k4_status=="Not enough data" else f"{k4_conf}%",k4_status,
-                 "Role mapping required before KPI status." if (tbt and not has_k4_mapping) else ("No month data." if not tbt else f"OOE {role_counts['W2W OOE']}/{wks}; Medic/HSEA {role_counts['Medic HSEA']}/{wks}; Field OIM {role_counts['Field Hub OIM']} this month"))
+                 "Complete KPI role configuration before status is calculated." if (tbt and not mapping_ready) else ("No month data." if not tbt else f"OOE {role_counts['W2W OOE']}/{wks}; Medic/HSEA {role_counts['Medic HSEA']}/{wks}; Field OIM {q_field_oim}/1 this quarter"))
     with cols[4]:
         kpi_card("KPI 5 | TIER 1","Permit-Controlled Incidents","—","Not connected","MOI source not yet connected. KPI 5 remains outside the assurance forms.")
 
@@ -338,6 +363,7 @@ def render_dashboard():
     if k3_status in ("Amber","Red"): notes.append(f"KPI 3 is {k3_status}: review quarterly engagement volume, checklist conformance and NUI coverage.")
     elif k3_status=="In progress": notes.append(f"KPI 3: Q{q} is in progress — {k3_visits} of 3 engagements completed with {k3_conf if k3_conf is not None else '—'}% checklist conformance.")
     if k4_status in ("Amber","Red"): notes.append(f"KPI 4 is {k4_status}: review site leadership visit delivery and Level 4 monitoring conformance.")
+    elif k4_status=="In progress": notes.append(f"KPI 4: reporting period is in progress; weekly visit delivery and conformance are on track, with Field Hub OIM quarter delivery still open.")
     if not notes: notes.append("No intervention statement is generated until sufficient mapped data is available, or all calculated KPIs are Green.")
     st.markdown(f'<div class="dash-note {css}"><b>Overall position: {overall}</b><br>'+"<br>".join(notes)+'</div>',unsafe_allow_html=True)
 
@@ -357,10 +383,10 @@ def render_dashboard():
             st.subheader("KPI 3 – Onshore Leadership")
             a,b=st.columns(2)
             a.metric("Engagements",f"{k3_visits} of 3" if lead else "—")
-            b.metric("Checklist conformance",f"{k3_conf}%" if k3_conf is not None else "—")
+            b.metric("Checklists meeting CoW standard",f"{k3_conf}%" if k3_conf is not None else "—")
             a.metric("Locations / teams",len(set(x["site"] for x in lead if x["site"])) if lead else "—")
             b.metric("Quarter",f"Q{q} · {'Complete' if quarter_complete else 'In progress'}" if lead else "—")
-            st.caption("Quarterly engagement progress is not treated as a failure while the reporting quarter remains open.")
+            st.caption("Checklist compliance uses the form’s Overall Control of Work Indicator. Quarterly visit delivery is shown as in progress until the quarter has actually ended.")
 
         with c2:
             st.subheader("KPI 2 – Asset Superintendent")
@@ -373,11 +399,11 @@ def render_dashboard():
 
             st.subheader("KPI 4 – Site Leadership")
             a,b=st.columns(2)
-            a.metric("W2W OOE",f"{role_counts['W2W OOE']} / {wks}" if has_k4_mapping else "Not mapped")
-            b.metric("Medic / HSEA",f"{role_counts['Medic HSEA']} / {wks}" if has_k4_mapping else "Not mapped")
-            a.metric("Field Hub OIM",role_counts["Field Hub OIM"] if has_k4_mapping else "Not mapped")
-            b.metric("Level 4 conformance",f"{k4_conf}%" if k4_conf is not None else "—")
-            st.caption("Field Hub OIM target is one per quarter. KPI status is withheld until required role/visit evidence is mapped.")
+            a.metric("W2W OOE",f"{role_counts['W2W OOE']} / {wks}" if mapping_ready else "Not mapped")
+            b.metric("Medic / HSEA",f"{role_counts['Medic HSEA']} / {wks}" if mapping_ready else "Not mapped")
+            a.metric("Field Hub OIM",f"{q_field_oim} / 1 quarter" if mapping_ready else "Not mapped")
+            b.metric("Level 4 audit conformance",f"{k4_conf}%" if k4_conf is not None else "—")
+            st.caption("KPI 4 uses completed Level 4 audits as the compliance basis. Field Hub OIM is assessed against the quarterly target; the two-consecutive-quarter Red rule is applied where history is available.")
 
     with tab2:
         findings=[]
