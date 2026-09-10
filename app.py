@@ -15,10 +15,10 @@ st.markdown('''
 <style>
 .block-container{max-width:1250px;padding-top:1rem;padding-bottom:3rem}
 div[data-testid="stSidebar"]{background:#f4f5f7}
-.puk-banner{background:#000;border:1px solid #000;color:#fff;display:grid;grid-template-columns:95px 1fr;align-items:center;margin-bottom:0;min-height:76px;overflow:visible}
+.puk-banner{background:#000;border:1px solid #000;color:#fff;display:grid;grid-template-columns:95px 1fr;align-items:center;margin-bottom:0;min-height:104px;overflow:hidden}
 .puk-banner .icon{padding:10px 12px}.puk-banner .icon img{width:62px}
-.puk-banner .title{text-align:center;font-weight:800;font-size:23px;line-height:1.35;padding:12px 12px;display:flex;flex-direction:column;justify-content:center;min-height:76px;box-sizing:border-box}
-.puk-banner .subtitle{text-align:center;font-weight:800;font-size:23px;margin-top:6px}
+.puk-banner .title{text-align:center;font-weight:800;font-size:22px;line-height:1.25;padding:12px 16px;display:flex;flex-direction:column;justify-content:center;min-height:104px;box-sizing:border-box}
+.puk-banner .subtitle{text-align:center;font-weight:800;font-size:22px;margin-top:8px}
 .purpose{border:1px solid #222;padding:8px 10px;font-size:13px;line-height:1.35;margin:0 0 8px;background:#fff}
 .blackbar{background:#000;color:#fff;font-weight:800;padding:7px 10px;border:1px solid #000;margin-top:8px}
 .section-title{font-weight:800;font-size:18px;margin:16px 0 6px}
@@ -106,12 +106,12 @@ elif page=="Toolbox Talk / Permit / POP":
     purpose("This monitoring activity is intended to be used to self-verify the day-to-day compliance of TBT & Permits Compliance. Ensuring the TBT is suitable for the tasks outlined in the permit and operating procedure, reinforcing safe working practices and identify gaps in team knowledge that could lead to hazardous mistakes. This assurance activity is designed for leadership roles (HSEA, OTL, W2W OOE & Site Controller) to strengthen oversight, promote engagement, and provide leadership assurance of Permit-to-Work effectiveness,")
     st.markdown('<div class="blackbar">QUESTION <span style="margin-left:18%">Site Visit is Required – Sequential Review: TBT followed by Permit Compliance or POP</span></div>',unsafe_allow_html=True)
     activity=meta.get("activity_type")
-    rs=render_monitoring_sections("tbt",DATA["tbt"][:2])
+    rs=render_monitoring_sections("tbt-q1-2",DATA["tbt"][:2])
     st.markdown('<div class="blackbar">AUDITING A POP? MOVE TO QUESTION 8</div>',unsafe_allow_html=True)
     if activity=="POP":
-        rs += render_monitoring_sections("pop",[DATA["pop"]])
+        rs += render_monitoring_sections("tbt-pop-q8",[DATA["pop"]])
     else:
-        rs += render_monitoring_sections("tbt",DATA["tbt"][2:])
+        rs += render_monitoring_sections("tbt-q3-7",DATA["tbt"][2:])
     st.markdown('<div class="blackbar">ENTER THIS AUDIT INTO PTRAC, LOG FINDINGS IN THE AUDIT PLAN & ENSURE EACH NON-COMPLIANCE GENERATES A RECORDED SMART ACTION</div>',unsafe_allow_html=True)
     if st.button("Submit TBT / Permit / POP Audit",type="primary",use_container_width=True):
         blanks=[r for r in rs if r["response"] is None]
