@@ -15,14 +15,14 @@ st.markdown('''
 <style>
 .block-container{max-width:1250px;padding-top:1rem;padding-bottom:3rem}
 div[data-testid="stSidebar"]{background:#f4f5f7}
-.puk-banner{background:#000;border:1px solid #000;color:#fff;display:grid;grid-template-columns:95px 1fr;align-items:center;margin-bottom:0}
+.puk-banner{background:#000;border:1px solid #000;color:#fff;display:grid;grid-template-columns:95px 1fr;align-items:center;margin-bottom:0;min-height:76px;overflow:visible}
 .puk-banner .icon{padding:10px 12px}.puk-banner .icon img{width:62px}
-.puk-banner .title{text-align:center;font-weight:800;font-size:23px;line-height:1.35;padding:8px 12px}
-.puk-banner .subtitle{text-align:center;font-weight:800;font-size:23px;margin-top:8px}
+.puk-banner .title{text-align:center;font-weight:800;font-size:23px;line-height:1.35;padding:12px 12px;display:flex;flex-direction:column;justify-content:center;min-height:76px;box-sizing:border-box}
+.puk-banner .subtitle{text-align:center;font-weight:800;font-size:23px;margin-top:6px}
 .purpose{border:1px solid #222;padding:8px 10px;font-size:13px;line-height:1.35;margin:0 0 8px;background:#fff}
 .blackbar{background:#000;color:#fff;font-weight:800;padding:7px 10px;border:1px solid #000;margin-top:8px}
 .section-title{font-weight:800;font-size:18px;margin:16px 0 6px}
-.qrow{border:1px solid #b7b7b7;padding:8px 10px;background:#fff;margin-top:2px}
+.qrow{padding:8px 0 2px;background:#fff;margin-top:4px;font-size:15px}
 [data-testid="stTextInput"] label,[data-testid="stSelectbox"] label,[data-testid="stDateInput"] label,[data-testid="stTextArea"] label,[data-testid="stRadio"] label{font-weight:700}
 </style>
 ''',unsafe_allow_html=True)
@@ -53,7 +53,7 @@ def render_monitoring_sections(prefix,sections):
         for qi,(letter,q) in enumerate(qs):
             st.markdown(f'<div class="qrow"><b>{letter})</b> {q}</div>',unsafe_allow_html=True)
             c1,c2=st.columns([1,2])
-            ans=c1.selectbox(f"{letter}) CONFIRM",["Select","Yes","No","N/A"],key=f"{prefix}-{si}-{qi}-a")
+            ans=c1.selectbox("Response",["Select","Yes","No","N/A"],key=f"{prefix}-{si}-{qi}-a",label_visibility="collapsed")
             act=c2.text_input("SMART ACTION",placeholder="Add Action",key=f"{prefix}-{si}-{qi}-s")
             responses.append({"section":section,"item":letter,"question":q,"response":None if ans=="Select" else ans,"smart_action":act})
     return responses
@@ -91,7 +91,7 @@ if page=="Permit Quality":
     banner("SELF VERIFICATION - LEVEL 4 MONITORING","Control of Work:  Permit Quality")
     meta=header_ptw()
     purpose("This monitoring activity is intended to verify day-to-day compliance with Permit-to-Work requirements, ensuring that permits and supporting risk assessments are suitable and sufficient for the task, safe working practices are consistently applied, and gaps in knowledge or understanding that could lead to hazardous errors are identified and addressed. The activity is designed for leadership roles (AA, Site Controller, Asset Superintendent) to strengthen oversight, promote engagement, and provide leadership assurance of Permit-to-Work effectiveness.")
-    st.markdown('<div class="blackbar">QUESTION <span style="float:right">CONFIRM&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;SMART ACTION</span></div>',unsafe_allow_html=True)
+    st.markdown('<div class="blackbar">QUESTION</div>',unsafe_allow_html=True)
     rs=render_monitoring_sections("ptw",DATA["ptw"])
     st.markdown('<div class="blackbar">ENTER THIS AUDIT INTO PTRAC, LOG FINDINGS IN THE AUDIT PLAN & ENSURE EACH NON-COMPLIANCE GENERATES A RECORDED SMART ACTION</div>',unsafe_allow_html=True)
     if st.button("Submit Permit Quality Audit",type="primary",use_container_width=True):
@@ -104,17 +104,14 @@ elif page=="Toolbox Talk / Permit / POP":
     banner("SELF VERIFICATION - LEVEL 4 MONITORING","Control of Work:  Toolbox Talk, Permit Compliance & Operating Procedures")
     meta=header_tbt()
     purpose("This monitoring activity is intended to be used to self-verify the day-to-day compliance of TBT & Permits Compliance. Ensuring the TBT is suitable for the tasks outlined in the permit and operating procedure, reinforcing safe working practices and identify gaps in team knowledge that could lead to hazardous mistakes. This assurance activity is designed for leadership roles (HSEA, OTL, W2W OOE & Site Controller) to strengthen oversight, promote engagement, and provide leadership assurance of Permit-to-Work effectiveness,")
-    st.markdown('<div class="blackbar">QUESTION <span style="margin-left:18%">Site Visit is Required – Sequential Review: TBT followed by Permit Compliance or POP</span><span style="float:right">CONFIRM&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;SMART ACTION</span></div>',unsafe_allow_html=True)
+    st.markdown('<div class="blackbar">QUESTION <span style="margin-left:18%">Site Visit is Required – Sequential Review: TBT followed by Permit Compliance or POP</span></div>',unsafe_allow_html=True)
     activity=meta.get("activity_type")
+    rs=render_monitoring_sections("tbt",DATA["tbt"][:2])
+    st.markdown('<div class="blackbar">AUDITING A POP? MOVE TO QUESTION 8</div>',unsafe_allow_html=True)
     if activity=="POP":
-        rs=render_monitoring_sections("tbt",DATA["tbt"][:2])
-        st.markdown('<div class="blackbar">AUDITING A POP? MOVE TO QUESTION 8</div>',unsafe_allow_html=True)
         rs += render_monitoring_sections("pop",[DATA["pop"]])
     else:
-        rs=render_monitoring_sections("tbt",DATA["tbt"])
-        st.markdown('<div class="blackbar">AUDITING A POP? MOVE TO QUESTION 8</div>',unsafe_allow_html=True)
-        if activity is None:
-            st.info("Select New WCC, Routine or POP in the header. POP follows the original instruction to move from Question 2 to Question 8.")
+        rs += render_monitoring_sections("tbt",DATA["tbt"][2:])
     st.markdown('<div class="blackbar">ENTER THIS AUDIT INTO PTRAC, LOG FINDINGS IN THE AUDIT PLAN & ENSURE EACH NON-COMPLIANCE GENERATES A RECORDED SMART ACTION</div>',unsafe_allow_html=True)
     if st.button("Submit TBT / Permit / POP Audit",type="primary",use_container_width=True):
         blanks=[r for r in rs if r["response"] is None]
@@ -133,16 +130,15 @@ elif page=="Leadership Engagement":
     rs=[]
     for si,(section,qs) in enumerate(DATA["lead"]):
         st.markdown(f'<div class="section-title">{section}</div>',unsafe_allow_html=True)
-        st.markdown('<div class="blackbar">Question <span style="float:right">Yes&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;No&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Comments / Evidence</span></div>',unsafe_allow_html=True)
+        st.markdown('<div class="blackbar">QUESTION</div>',unsafe_allow_html=True)
         for qi,q in enumerate(qs):
             st.markdown(f'<div class="qrow">{q}</div>',unsafe_allow_html=True)
             if section=="Learning & Continuous Improvement" and q.startswith("Can personnel suggest"):
                 comment=st.text_area("Comments / Evidence",key=f"lead-{si}-{qi}-c",height=70)
                 ans="Comment"
             else:
-                c1,c2=st.columns([1,3])
-                ans=c1.radio("Response",["Yes","No"],index=None,horizontal=True,key=f"lead-{si}-{qi}-a",label_visibility="collapsed")
-                comment=c2.text_input("Comments / Evidence",key=f"lead-{si}-{qi}-c",label_visibility="collapsed")
+                ans=st.radio("Response",["Yes","No"],index=None,horizontal=True,key=f"lead-{si}-{qi}-a",label_visibility="collapsed")
+                comment=st.text_input("COMMENTS / EVIDENCE",key=f"lead-{si}-{qi}-c",placeholder="Enter comments / evidence")
             rs.append({"section":section,"question":q,"response":ans,"comments_evidence":comment})
     st.markdown('<div class="section-title">Leadership Summary</div>',unsafe_allow_html=True)
     positive=st.text_area("Positive Observations")
