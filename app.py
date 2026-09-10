@@ -15,10 +15,10 @@ st.markdown('''
 <style>
 .block-container{max-width:1250px;padding-top:1rem;padding-bottom:3rem}
 div[data-testid="stSidebar"]{background:#f4f5f7}
-.puk-banner{background:#000;border:1px solid #000;color:#fff;display:grid;grid-template-columns:95px 1fr;align-items:center;margin-bottom:0;min-height:104px;overflow:hidden}
-.puk-banner .icon{padding:10px 12px}.puk-banner .icon img{width:62px}
-.puk-banner .title{text-align:center;font-weight:800;font-size:22px;line-height:1.25;padding:12px 16px;display:flex;flex-direction:column;justify-content:center;min-height:104px;box-sizing:border-box}
-.puk-banner .subtitle{text-align:center;font-weight:800;font-size:22px;margin-top:8px}
+.puk-banner{background:#000;border:1px solid #000;color:#fff;display:grid;grid-template-columns:105px 1fr;align-items:center;margin-bottom:8px;min-height:122px;overflow:hidden;box-sizing:border-box}
+.puk-banner .icon{padding:14px 16px;display:flex;align-items:center;justify-content:flex-start}.puk-banner .icon img{width:66px;height:auto}
+.puk-banner .title{text-align:center;font-weight:800;font-size:22px;line-height:1.35;padding:18px 24px 18px 8px;display:flex;flex-direction:column;justify-content:center;min-height:122px;box-sizing:border-box}
+.puk-banner .subtitle{text-align:center;font-weight:800;font-size:22px;line-height:1.3;margin-top:10px}
 .purpose{border:1px solid #222;padding:8px 10px;font-size:13px;line-height:1.35;margin:0 0 8px;background:#fff}
 .blackbar{background:#000;color:#fff;font-weight:800;padding:7px 10px;border:1px solid #000;margin-top:8px}
 .section-title{font-weight:800;font-size:18px;margin:16px 0 6px}
