@@ -4,6 +4,7 @@ import json, sqlite3, uuid, base64
 from pathlib import Path
 from datetime import date, datetime
 import pandas as pd
+import streamlit.components.v1 as components
 
 BASE=Path(__file__).parent
 DATA=json.loads((BASE/"questions.json").read_text(encoding="utf-8"))
@@ -13,7 +14,7 @@ ICON=base64.b64encode((BASE/"cow_icon.png").read_bytes()).decode()
 st.set_page_config(page_title="PUK CoW Assurance Forms", page_icon="🔒", layout="wide")
 st.markdown('''
 <style>
-.block-container{max-width:1250px;padding-top:1rem;padding-bottom:3rem}
+.block-container{max-width:1250px;padding-top:2.25rem;padding-bottom:3rem}
 div[data-testid="stSidebar"]{background:#f4f5f7}
 .puk-banner{background:#000;border:1px solid #000;color:#fff;display:grid;grid-template-columns:105px 1fr;align-items:center;margin-bottom:8px;min-height:122px;overflow:hidden;box-sizing:border-box}
 .puk-banner .icon{padding:14px 16px;display:flex;align-items:center;justify-content:flex-start}.puk-banner .icon img{width:66px;height:auto}
@@ -51,12 +52,19 @@ def render_monitoring_sections(prefix,sections):
     for si,(section,qs) in enumerate(sections):
         st.markdown(f'<div class="section-title">{section}</div>',unsafe_allow_html=True)
         for qi,(letter,q) in enumerate(qs):
-            st.markdown(f'<div class="qrow"><b>{letter})</b> {q}</div>',unsafe_allow_html=True)
+            anchor=f"q-{prefix}-{si}-{qi}"
+            st.markdown(f'<div id="{anchor}" class="qrow"><b>{letter})</b> {q}</div>',unsafe_allow_html=True)
             c1,c2=st.columns([1,2])
             ans=c1.selectbox("Response",["Select","Yes","No","N/A"],key=f"{prefix}-{si}-{qi}-a",label_visibility="collapsed")
             act=c2.text_input("SMART ACTION",placeholder="Add Action",key=f"{prefix}-{si}-{qi}-s")
-            responses.append({"section":section,"item":letter,"question":q,"response":None if ans=="Select" else ans,"smart_action":act})
+            responses.append({"section":section,"item":letter,"question":q,"response":None if ans=="Select" else ans,"smart_action":act,"anchor":anchor})
     return responses
+
+def jump_to(anchor):
+    components.html(f"""<script>
+    const el = parent.document.getElementById('{anchor}');
+    if (el) {{ el.scrollIntoView({{behavior:'smooth', block:'center'}}); }}
+    </script>""", height=0)
 
 def header_ptw():
     c1,c2,c3,c4=st.columns([1.5,1.2,1.2,1])
@@ -97,7 +105,9 @@ if page=="Permit Quality":
     if st.button("Submit Permit Quality Audit",type="primary",use_container_width=True):
         blanks=[r for r in rs if r["response"] is None]
         if not meta["site"] or not meta["auditor"]: st.error("Complete SITE / INSTALLATION and AUDITOR.")
-        elif blanks: st.error(f"Please confirm every question. {len(blanks)} response(s) remain as Select.")
+        elif blanks:
+            st.error(f"{len(blanks)} question(s) still require a response. Taking you to the first unanswered question.")
+            jump_to(blanks[0]["anchor"])
         else: st.success("Submitted: "+save("Control of Work: Permit Quality",meta,rs))
 
 elif page=="Toolbox Talk / Permit / POP":
@@ -112,11 +122,14 @@ elif page=="Toolbox Talk / Permit / POP":
         rs += render_monitoring_sections("tbt-pop-q8",[DATA["pop"]])
     else:
         rs += render_monitoring_sections("tbt-q3-7",DATA["tbt"][2:])
+        rs += render_monitoring_sections("tbt-q8",[DATA["pop"]])
     st.markdown('<div class="blackbar">ENTER THIS AUDIT INTO PTRAC, LOG FINDINGS IN THE AUDIT PLAN & ENSURE EACH NON-COMPLIANCE GENERATES A RECORDED SMART ACTION</div>',unsafe_allow_html=True)
     if st.button("Submit TBT / Permit / POP Audit",type="primary",use_container_width=True):
         blanks=[r for r in rs if r["response"] is None]
         if not meta["site"] or not meta["auditor"] or not activity: st.error("Complete SITE / INSTALLATION, AUDITOR and select New WCC, Routine or POP.")
-        elif blanks: st.error(f"Please confirm every displayed question. {len(blanks)} response(s) remain as Select.")
+        elif blanks:
+            st.error(f"{len(blanks)} displayed question(s) still require a response. Taking you to the first unanswered question.")
+            jump_to(blanks[0]["anchor"])
         else: st.success("Submitted: "+save("Control of Work: Toolbox Talk, Permit Compliance & Operating Procedures",meta,rs))
 
 elif page=="Leadership Engagement":
@@ -132,14 +145,15 @@ elif page=="Leadership Engagement":
         st.markdown(f'<div class="section-title">{section}</div>',unsafe_allow_html=True)
         st.markdown('<div class="blackbar">QUESTION</div>',unsafe_allow_html=True)
         for qi,q in enumerate(qs):
-            st.markdown(f'<div class="qrow">{q}</div>',unsafe_allow_html=True)
+            anchor=f"q-lead-{si}-{qi}"
+            st.markdown(f'<div id="{anchor}" class="qrow">{q}</div>',unsafe_allow_html=True)
             if section=="Learning & Continuous Improvement" and q.startswith("Can personnel suggest"):
                 comment=st.text_area("Comments / Evidence",key=f"lead-{si}-{qi}-c",height=70)
                 ans="Comment"
             else:
                 ans=st.radio("Response",["Yes","No"],index=None,horizontal=True,key=f"lead-{si}-{qi}-a",label_visibility="collapsed")
                 comment=st.text_input("COMMENTS / EVIDENCE",key=f"lead-{si}-{qi}-c",placeholder="Enter comments / evidence")
-            rs.append({"section":section,"question":q,"response":ans,"comments_evidence":comment})
+            rs.append({"section":section,"question":q,"response":ans,"comments_evidence":comment,"anchor":anchor})
     st.markdown('<div class="section-title">Leadership Summary</div>',unsafe_allow_html=True)
     positive=st.text_area("Positive Observations")
     improvement=st.text_area("Opportunities for Improvement")
@@ -151,7 +165,11 @@ elif page=="Leadership Engagement":
         required=[r for r in rs if r["response"]!="Comment"]
         blanks=[r for r in required if r["response"] is None]
         if not site or not leader: st.error("Complete Location / Team and Leadership Representative.")
-        elif blanks or indicator is None: st.error("Answer all Yes/No questions and select the Overall Control of Work Indicator.")
+        elif blanks:
+            st.error(f"{len(blanks)} question(s) still require a response. Taking you to the first unanswered question.")
+            jump_to(blanks[0]["anchor"])
+        elif indicator is None:
+            st.error("Select the Overall Control of Work Indicator.")
         else:
             meta={"site":site,"audit_date":str(ad),"auditor":leader,"site_controller":sc,"reference":"","positive_observations":positive,"opportunities_for_improvement":improvement,"actions_agreed":actions,"auditor_notes":notes,"overall_indicator":indicator}
             st.success("Submitted: "+save("Control of Work Leadership Engagement Checklist",meta,rs,indicator))
