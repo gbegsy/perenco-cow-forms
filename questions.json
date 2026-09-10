@@ -1,453 +1,424 @@
 {
-  "Level 4 Monitoring – PTW": [
-    {
-      "id": "PTW-Q7",
-      "section": "Planning",
-      "question": "Is the activity planned to be undertaken outside the next 24 hours?"
-    },
-    {
-      "id": "PTW-Q8",
-      "section": "Planning",
-      "question": "Has the WCC been discussed in the daily permit meeting?"
-    },
-    {
-      "id": "PTW-Q9",
-      "section": "Planning",
-      "question": "Have current ORA's been considered, and how they may impact the work activity or task?"
-    },
-    {
-      "id": "PTW-Q10",
-      "section": "Planning",
-      "question": "Has a work site visit been undertaken by the PA AND AA to identify the hazards associated to the task?"
-    },
-    {
-      "id": "PTW-Q12",
-      "section": "Raising a NEW WCC",
-      "question": "Is there a brief, clear and concise summary of cope?  Has the duration of task been identified.  i.e. one shift or several?"
-    },
-    {
-      "id": "PTW-Q13",
-      "section": "Raising a NEW WCC",
-      "question": "Has the increased risk of error been considered and appropriate controls identified (e.g. physical verification by AA or attaching a work location label) where similar a..."
-    },
-    {
-      "id": "PTW-Q14",
-      "section": "Raising a NEW WCC",
-      "question": "Is the work location, tools and equipment described clearly and specific?"
-    },
-    {
-      "id": "PTW-Q15",
-      "section": "Raising a NEW WCC",
-      "question": "How is the team doing it? Is the method clear?"
-    },
-    {
-      "id": "PTW-Q16",
-      "section": "Raising a NEW WCC",
-      "question": "Is the WCC SPECIFIC to the task and not generic?"
-    },
-    {
-      "id": "PTW-Q17",
-      "section": "Raising a NEW WCC",
-      "question": "Is the work party competent and authorised to undertake the task, with evidence that relevant PCAP requirement, task-specific training, and additional competency require..."
-    },
-    {
-      "id": "PTW-Q19",
-      "section": "Issuing a routine WCC",
-      "question": "Is the Routine WCC used for individual, low-risk, and regularly performed activities?"
-    },
-    {
-      "id": "PTW-Q20",
-      "section": "Issuing a routine WCC",
-      "question": "Does the description of the task comply with question 2? and appropriate for the task?"
-    },
-    {
-      "id": "PTW-Q21",
-      "section": "Issuing a routine WCC",
-      "question": "Does the activity involve breaking of containment on ANY system?  And has a thorough hazard identification been conducted to evaluate the associated risks?"
-    },
-    {
-      "id": "PTW-Q23",
-      "section": "Identifying the correct WCC",
-      "question": "Has the correct Type of WCC been selected appropriate for the task (Cold work, BOC etc)?  Has the correct risk assessment level been selected (Level 1 low risk..."
-    },
-    {
-      "id": "PTW-Q24",
-      "section": "Identifying the correct WCC",
-      "question": "Where identified hazards require supplementary risk evaluation (BOC Checks, COSHH, HAVS, Manual handling, etc), have these been completed?"
-    },
-    {
-      "id": "PTW-Q26",
-      "section": "Level 2 Risk Assessment",
-      "question": "Has a team consisting of 3 persons (who have suitable knowledge of the task) taken part in the risk assessment?  Is the task risk assessment team leader competent..."
-    },
-    {
-      "id": "PTW-Q27",
-      "section": "Level 2 Risk Assessment",
-      "question": "For NUI's - Has the level 2 risk assessment activity been discussed with the Hub OIM prior to authorisation and issue?"
-    },
-    {
-      "id": "PTW-Q29",
-      "section": "Risk Assessment - Task Steps",
-      "question": "Is the task broken down into to clearly defined task steps on the WCC and details the consequence in which it will be done?"
-    },
-    {
-      "id": "PTW-Q30",
-      "section": "Clear Hazard Identification Statements",
-      "question": "Is it clear What the hazard is and who/what might be harmed?  Is there only one hazard per statement?"
-    },
-    {
-      "id": "PTW-Q31",
-      "section": "Clear control statements",
-      "question": "Are control statements clear on Who is doing what and when? Is there enough detail to make it clear but short and concise?  Is it clear and simple language?"
-    },
-    {
-      "id": "PTW-Q32",
-      "section": "Control Effectiveness",
-      "question": "Is the risk reduction credible?  Have considerations been made to ensure that for those who have been given numerous actions, the risk of error is not increased"
-    },
-    {
-      "id": "PTW-Q33",
-      "section": "Hierarchy of Controls",
-      "question": "Is the focus towards the higher level of control, i.e. \"elimination\" and \"substitution\" rather than the lower end of the hierarchy i.e. procedures, PPE."
-    },
-    {
-      "id": "PTW-Q34",
-      "section": "Low Value Hazard & Controls (avoiding Clutter)",
-      "question": "Is the WCC free from hazards and controls which do not actively reduce the risk OR are part of standardised measures already in place i.e. s..."
-    },
-    {
-      "id": "PTW-Q35",
-      "section": "Low Value Hazard & Controls (avoiding Clutter)",
-      "question": "Are the controls capable of verifying and providing the risk gap has been closed and not vague using words such as \"decide\" or \"consider\" or..."
-    },
-    {
-      "id": "PTW-Q37",
-      "section": "Isolation Requirements",
-      "question": "Have all controls within the ICC been acknowledged and transferred to the WCC?"
-    },
-    {
-      "id": "PTW-Q38",
-      "section": "Low Risk Tasks which do not require a WCC",
-      "question": "Is the site actively monitored to ensure tasks are not being undertaken without an appropriate WCC?"
-    },
-    {
-      "id": "PTW-Q39",
-      "section": "Low Risk Tasks which do not require a WCC",
-      "question": "And, for those non-permit tasks, is a toolbox talk completed?"
-    }
+  "ptw": [
+    [
+      "1. Planning:",
+      [
+        [
+          "a",
+          "Is the activity planned to be undertaken outside the next 24 hours?"
+        ],
+        [
+          "b",
+          "Has the WCC been discussed in the daily permit meeting?"
+        ],
+        [
+          "c",
+          "Have current ORA’s been considered, and how they may impact on the work activity or task?"
+        ],
+        [
+          "d",
+          "Has a work site visit been undertaken by the PA AND AA to identify the hazards associated to the task?"
+        ]
+      ]
+    ],
+    [
+      "2. Raising a NEW WCC: What is the task?",
+      [
+        [
+          "a",
+          "Is there a brief, clear and concise summary of scope? Has the duration of task been identified. i.e. one shift or several?"
+        ],
+        [
+          "b",
+          "Is the work location, tools and equipment described clearly and specific?"
+        ],
+        [
+          "c",
+          "Has the increased risk of error been considered and appropriate controls identified (e.g. physical verification by AA or attaching a work location label) where similar adjacent equipment is involved / non-standard equipment numbering / poorly labelled plant, or personnel unfamiliar with the worksite etc."
+        ],
+        [
+          "d",
+          "How is the team doing it? Is the method clear?"
+        ],
+        [
+          "e",
+          "Is the WCC SPECIFIC to the task and not generic?"
+        ],
+        [
+          "f",
+          "Is the work party competent and authorised to undertake the task, with evidence that relevant PCAP requirements, task-specific training, and additional competency requirements for higher-risk activities (e.g. Breaking Containment / Bolted joints)"
+        ]
+      ]
+    ],
+    [
+      "3. Issuing a Routine WCC:",
+      [
+        [
+          "a",
+          "Is the Routine WCC used for individual, low risk and regularly performed activities?"
+        ],
+        [
+          "b",
+          "Does the description of the task comply with question 2? and appropriate for the task?"
+        ],
+        [
+          "c",
+          "Does the activity involve breaking of containment on ANY system? And has a thorough hazard identification been conducted to evaluate the associated risks?"
+        ]
+      ]
+    ],
+    [
+      "4. Identifying the Correct WCC:",
+      [
+        [
+          "a",
+          "Has the correct Type of WCC been selected appropriate for the task (Cold work, BOC etc)? Has the correct risk assessment level been selected (Level 1 low risk / level 2 higher risk) appropriate to the task?"
+        ],
+        [
+          "b",
+          "Where identified hazards require supplementary risk evaluation (BOC Checks, COSHH, HAVS, Manual handling, etc), have these been completed?"
+        ]
+      ]
+    ],
+    [
+      "5. Level 2 Risk Assessment:",
+      [
+        [
+          "a",
+          "Has a team consisting of 3 persons (who have suitable knowledge of the task) taken part in the risk assessment? Is the task risk assessment team leader competent (check PCAP profile)?"
+        ]
+      ]
+    ],
+    [
+      "6. Risk Assessment - Task Steps:",
+      [
+        [
+          "a",
+          "Is the task broken down into to clearly defined task steps on the WCC and details the sequence in which it will be done?"
+        ]
+      ]
+    ],
+    [
+      "7. Clear Hazard Identification Statements:",
+      [
+        [
+          "a",
+          "Is it clear What the hazard is and who/what might be harmed? Is there Only one hazard per statement?"
+        ]
+      ]
+    ],
+    [
+      "8. Clear Control Statements:",
+      [
+        [
+          "a",
+          "Are Control Statements clear on Who is doing what and when?"
+        ],
+        [
+          "b",
+          "Is there enough detail to make it clear but short and concise? Is it clear and simple language?"
+        ]
+      ]
+    ],
+    [
+      "9. Control Effectiveness:",
+      [
+        [
+          "a",
+          "Is the risk reduction credible? Have considerations been made to ensure that for those who have been given numerous actions, the risk of error is not increased?"
+        ]
+      ]
+    ],
+    [
+      "10. Hierarchy of Controls:",
+      [
+        [
+          "a",
+          "Is the focus towards the higher level of control, i.e. “elimination” and “substitution” rather than the lower end of the hierarchy i.e. procedures, PPE."
+        ]
+      ]
+    ],
+    [
+      "11. Low Value Hazard & Controls (avoiding Clutter):",
+      [
+        [
+          "a",
+          "Is the WCC free from hazards and controls which do not actively reduce the risk OR are part of standardised measures already in place i.e. standards / Standard PPE etc."
+        ],
+        [
+          "b",
+          "Are the controls capable of verifying and proving the risk gap has been closed and not vague using words such as \"decide\" or \"consider\" or \"if required\"."
+        ]
+      ]
+    ],
+    [
+      "12. Isolation Requirements:",
+      [
+        [
+          "a",
+          "Have all controls within the ICC been acknowledged and transferred to the WCC?"
+        ]
+      ]
+    ],
+    [
+      "13. Low Risk Tasks which do not require a WCC:",
+      [
+        [
+          "a",
+          "Is the site actively monitored to ensure tasks are not being undertaken without an appropriate WCC?"
+        ],
+        [
+          "b",
+          "And, for those non-permit tasks, is a toolbox talk completed?"
+        ]
+      ]
+    ]
   ],
-  "Level 4 Monitoring – Toolbox Talk": [
-    {
-      "id": "TBT-Q7",
-      "section": "TBT Hazard identification",
-      "question": "Join the TBT and confirm that the following discussions have taken place : TBT Lead (Typically the PA) discusses the hazards and controls associated to the task..."
-    },
-    {
-      "id": "TBT-Q8",
-      "section": "TBT Hazard identification",
-      "question": "Join the TBT and confirm that the following discussions have taken place : SIMOP activities that may conflict with the activity / task?"
-    },
-    {
-      "id": "TBT-Q9",
-      "section": "TBT Hazard identification",
-      "question": "Join the TBT and confirm that the following discussions have taken place : Spills, and potential proximity to open drains discussed and how they can be avoided?"
-    },
-    {
-      "id": "TBT-Q10",
-      "section": "TBT Hazard identification",
-      "question": "Join the TBT and confirm that the following discussions have taken place : Situation awareness, such as potential dropped objects (tools, equipment or structura..."
-    },
-    {
-      "id": "TBT-Q11",
-      "section": "TBT Hazard identification",
-      "question": "Join the TBT and confirm that the following discussions have taken place : Isolations, identified checked and discussed?"
-    },
-    {
-      "id": "TBT-Q12",
-      "section": "TBT Hazard identification",
-      "question": "Join the TBT and confirm that the following discussions have taken place : Emergency response arrangements been discussed and everyone understands what to do?"
-    },
-    {
-      "id": "TBT-Q13",
-      "section": "TBT Hazard identification",
-      "question": "Join the TBT and confirm that the following discussions have taken place : Where additional significant hazards are identified, is the job stopped and reported ..."
-    },
-    {
-      "id": "TBT-Q14",
-      "section": "TBT Hazard identification",
-      "question": "Join the TBT and confirm that the following discussions have taken place : Is the TBT used for its intention i.e. Discuss task details by reviewing the identifi..."
-    },
-    {
-      "id": "TBT-Q16",
-      "section": "TBT Understanding the Task",
-      "question": "What is the task or activity?  How is it chunked into key steps? : Are questions open to engage the work party?"
-    },
-    {
-      "id": "TBT-Q17",
-      "section": "TBT Understanding the Task",
-      "question": "What is the task or activity?  How is it chunked into key steps? : Is the activity broken down into significant steps?"
-    },
-    {
-      "id": "TBT-Q18",
-      "section": "TBT Understanding the Task",
-      "question": "What is the task or activity?  How is it chunked into key steps? : How is the team undertaking each step?  Is the method clear?"
-    },
-    {
-      "id": "TBT-Q19",
-      "section": "TBT Understanding the Task",
-      "question": "What is the task or activity?  How is it chunked into key steps? : Has the work party activitely participated in the safety toolbox talk discussion and signed t..."
-    },
-    {
-      "id": "TBT-Q20",
-      "section": "TBT Understanding the Task",
-      "question": "What is the task or activity?  How is it chunked into key steps? : Where there is a lone work party, confirm that the PA has completed the TBT with the Area Aut..."
-    },
-    {
-      "id": "TBT-Q22",
-      "section": "Hazards associated to the Worksite and Equipment",
-      "question": "Have tools and equipment been clearly identified on the risk assessment and adequate controls in place?"
-    },
-    {
-      "id": "TBT-Q23",
-      "section": "Hazards associated to the Worksite and Equipment",
-      "question": "Are there any additional hazards transporting tools and equipment to the work site?"
-    },
-    {
-      "id": "TBT-Q24",
-      "section": "Hazards associated to the Worksite and Equipment",
-      "question": "Is the task broken down into clearly defined steps and details the sequence in which it will be done?"
-    },
-    {
-      "id": "TBT-Q26",
-      "section": "Permit Compliance",
-      "question": "Is there an up-to date copy of the WCC at the worksite and signed by all members of the work party?"
-    },
-    {
-      "id": "TBT-Q27",
-      "section": "Permit Compliance",
-      "question": "Is the permit (New or Routine) specific for the task and not generic?"
-    },
-    {
-      "id": "TBT-Q28",
-      "section": "Permit Compliance",
-      "question": "Is the task broken down into clearly defined steps and details the sequence in which it will be done?"
-    },
-    {
-      "id": "TBT-Q30",
-      "section": "Permit Compliance - Implementing the Controls",
-      "question": "If required, have gas tests been carried out and recorded on the permit?  And a gas detector available if required?"
-    },
-    {
-      "id": "TBT-Q31",
-      "section": "Permit Compliance - Implementing the Controls",
-      "question": "Have all controls on the permit been implemented?"
-    },
-    {
-      "id": "TBT-Q32",
-      "section": "P ermit Compliance - Implementing the Controls",
-      "question": "Have controls within supplementary risk evaluation such as COSHH, Manual Handling, HAVS, BOC checks etc been implemented and the team is aware?"
-    },
-    {
-      "id": "TBT-Q33",
-      "section": "Permit Compliance - Implementing the Controls",
-      "question": "Where substances are in use, does the work party understand what action to take in an emergency?"
-    },
-    {
-      "id": "TBT-Q34",
-      "section": "Permit Compliance - Implementing the Controls",
-      "question": "Have additional method statements been reviewed, recorded and complied with?"
-    },
-    {
-      "id": "TBT-Q36",
-      "section": "Permit Authorisation",
-      "question": "Has the permit undergone the correct level of authorisation?  AA and Site Controller?"
-    },
-    {
-      "id": "TBT-Q37",
-      "section": "Permit Authorisation",
-      "question": "For NUI's - Have all level 2 risk assessment activities been discussed with the hub OIM prior to authorisation and issue?"
-    },
-    {
-      "id": "TBT-Q39",
-      "section": "Managing \"low risk\" activities - Review how low risk tasks are managed on site",
-      "question": "Is the routine WCC suitable and specific for the task and appropriate to justify \"low risk\"?"
-    },
-    {
-      "id": "TBT-Q40",
-      "section": "Managing \"low risk\" activities - Those tasks which do not require a permit i.e. routine helideck ops etc, has a TBT been completed?",
-      "question": "Managing \"low risk\" activities - Those tasks which do not require a permit i.e. routine helideck ops etc, has a TBT been completed?"
-    },
-    {
-      "id": "TBT-Q42",
-      "section": "Process Operating Procedures (POP)",
-      "question": "Has a TBT been Completed prior to starting the task? : Is the POP being followed in the correct sequences?  Valve line up completed (where appropriate)."
-    },
-    {
-      "id": "TBT-Q43",
-      "section": "Process Operating Procedures (POP)",
-      "question": "Has a TBT been Completed prior to starting the task? : Two person signatures applied for critical steps?"
-    },
-    {
-      "id": "TBT-Q44",
-      "section": "Process Operating Procedures (POP)",
-      "question": "Has a TBT been Completed prior to starting the task? : Are operators using the most up to date POP's - check how controlled documents are managed."
-    },
-    {
-      "id": "TBT-Q45",
-      "section": "Process Operating Procedures (POP)",
-      "question": "Has a TBT been Completed prior to starting the task? : Is the POP in its review date?  And has it been transferred to the new format (i.e. Task screenin..."
-    },
-    {
-      "id": "TBT-Q46",
-      "section": "Process Operating Procedures (POP)",
-      "question": "Has a TBT been Completed prior to starting the task? : Are completed POP's scanned and uploaded to a designated storage area"
-    },
-    {
-      "id": "TBT-Q47",
-      "section": "Process Operating Procedures (POP)",
-      "question": "Has a TBT been Completed prior to starting the task? : Is the handover section signed at the end of the shift and countersigned by incoming and outgoing..."
-    }
+  "tbt": [
+    [
+      "1. TBT Hazard Identification: Join the TBT and confirm that the following discussions have taken place:",
+      [
+        [
+          "a",
+          "TBT Lead (typically the PA) discusses the hazards and controls associated to the task/activity (sourced from the Task Risk Assessment), as well as:"
+        ],
+        [
+          "b",
+          "SIMOP activities that may conflict with the activity / task?"
+        ],
+        [
+          "c",
+          "Spills, and potential proximity to open drains discussed and how they can be avoided?"
+        ],
+        [
+          "d",
+          "Situation awareness, such as potential dropped objects (tools, equipment or structural) discussed and actions taken?"
+        ],
+        [
+          "e",
+          "Isolations, identified checked and discussed?"
+        ],
+        [
+          "f",
+          "Emergency response arrangements been discussed and everyone understands what to do?"
+        ],
+        [
+          "g",
+          "Where additional significant hazards are identified, is the job stopped and reported to the AA for the TRA to be reassessed and re-authorised?"
+        ],
+        [
+          "h",
+          "Is the TBT used for its intention i.e. Discuss task details by reviewing the identified energy prompts in the RA and control measures. Review key supporting documentation and record MINOR additional hazards?"
+        ]
+      ]
+    ],
+    [
+      "2. TBT Understanding the Task: What is the task or activity? How is it chunked into key steps?",
+      [
+        [
+          "a",
+          "Are questions open to engage the work party?"
+        ],
+        [
+          "b",
+          "Is the activity broken down into significant steps?"
+        ],
+        [
+          "c",
+          "How is the team undertaking each step? Is the method clear?"
+        ],
+        [
+          "d",
+          "Has the work party actively participated in the safety toolbox talk discussion and signed the TBT"
+        ],
+        [
+          "e",
+          "Where there is a Lone Work party, confirm that the PA has completed the TBT with the Area Authority (AA) prior to commencing the task."
+        ]
+      ]
+    ],
+    [
+      "3. Hazards associated to the Worksite and Equipment:",
+      [
+        [
+          "a",
+          "Have tools and equipment been clearly identified on the risk assessment and adequate controls in place?"
+        ],
+        [
+          "b",
+          "Are there any additional hazards transporting tools and equipment to the work site?"
+        ],
+        [
+          "c",
+          "Are all access and egress points checked and clear?"
+        ]
+      ]
+    ],
+    [
+      "4. Permit Compliance:",
+      [
+        [
+          "a",
+          "Is there an up-to-date copy of the WCC at the worksite and signed by all members of the work party?"
+        ],
+        [
+          "b",
+          "Is the permit (New or Routine) specific for the task and not generic?"
+        ],
+        [
+          "c",
+          "Is the task broken down into clearly defined steps and details the sequence in which it will be done?"
+        ]
+      ]
+    ],
+    [
+      "5. Permit Compliance - Implementing the Controls:",
+      [
+        [
+          "a",
+          "If required, have gas tests been carried out and recorded on the permit? And a gas detector available if required?"
+        ],
+        [
+          "b",
+          "Have all controls on the permit been implemented?"
+        ],
+        [
+          "c",
+          "Have controls within supplementary risk evaluation such as COSHH, Manual Handling, HAVS, BOC checks etc been implemented and the team is aware?"
+        ],
+        [
+          "d",
+          "Where substances are in use, does the work party understand what action to take in an emergency?"
+        ],
+        [
+          "e",
+          "Have additional method statements been reviewed, recorded and complied with?"
+        ]
+      ]
+    ],
+    [
+      "6. Permit Authorisation:",
+      [
+        [
+          "a",
+          "Has the permit undergone the correct level of authorisation? AA and Site Controller?"
+        ],
+        [
+          "b",
+          "For NUI’s – Have all Level 2 risk assessment activities been discussed with the hub OIM prior to authorisation and issue?"
+        ]
+      ]
+    ],
+    [
+      "7. Managing “Low Risk” activities - Review how low risk tasks are managed on site:",
+      [
+        [
+          "a",
+          "Is the routine WCC suitable and specific for the task and appropriate to justify “low risk”?"
+        ],
+        [
+          "b",
+          "Those tasks which do not require a permit i.e. routine helideck ops etc, has a TBT been completed?"
+        ]
+      ]
+    ]
   ],
-  "Leadership Engagement": [
-    {
-      "id": "LE-1",
-      "section": "Permit to Work (PTW)",
-      "question": "Are personnel able to explain the work they are undertaking?"
-    },
-    {
-      "id": "LE-1",
-      "section": "Permit to Work (PTW)",
-      "question": "Have personnel reviewed and understood the permit requirements?"
-    },
-    {
-      "id": "LE-1",
-      "section": "Permit to Work (PTW)",
-      "question": "Is the permit available at the work site and applicable to the work being undertaken?"
-    },
-    {
-      "id": "LE-1",
-      "section": "Permit to Work (PTW)",
-      "question": "Are routine permits being used for low-risk tasks and are not generic?"
-    },
-    {
-      "id": "LE-1",
-      "section": "Permit to Work (PTW)",
-      "question": "Do personnel understand when work should stop and the permit revalidated?"
-    },
-    {
-      "id": "LE-6",
-      "section": "Hazard Identification & Risk Assessment",
-      "question": "Can personnel explain the key hazards associated with the task?"
-    },
-    {
-      "id": "LE-6",
-      "section": "Hazard Identification & Risk Assessment",
-      "question": "Can personnel describe the controls used to manage the hazards?"
-    },
-    {
-      "id": "LE-6",
-      "section": "Hazard Identification & Risk Assessment",
-      "question": "Have any conditions changed since work commenced?"
-    },
-    {
-      "id": "LE-6",
-      "section": "Hazard Identification & Risk Assessment",
-      "question": "Have Major Accident Hazard (MAH) risks been considered where applicable?"
-    },
-    {
-      "id": "LE-6",
-      "section": "Hazard Identification & Risk Assessment",
-      "question": "Are environmental hazards and controls understood?"
-    },
-    {
-      "id": "LE-11",
-      "section": "Toolbox Talks & Workforce Understanding",
-      "question": "Have personnel participated in the Toolbox Talk for the task?"
-    },
-    {
-      "id": "LE-11",
-      "section": "Toolbox Talks & Workforce Understanding",
-      "question": "Can personnel explain the key points discussed during the Toolbox Talk?"
-    },
-    {
-      "id": "LE-11",
-      "section": "Toolbox Talks & Workforce Understanding",
-      "question": "Have personnel had the opportunity to ask questions or raise concerns?"
-    },
-    {
-      "id": "LE-14",
-      "section": "Worksite Compliance",
-      "question": "Are permit controls being implemented at the worksite?"
-    },
-    {
-      "id": "LE-14",
-      "section": "Worksite Compliance",
-      "question": "Are barriers, isolations, PPE and other controls in place and maintained?"
-    },
-    {
-      "id": "LE-14",
-      "section": "Worksite Compliance",
-      "question": "Is the work being carried out as described within the permit?"
-    },
-    {
-      "id": "LE-14",
-      "section": "Worksite Compliance",
-      "question": "Are there any examples of conditions differing from those described in the permit?"
-    },
-    {
-      "id": "LE-18",
-      "section": "Supervision & Leadership",
-      "question": "Is supervision visible and appropriate for the task risk?"
-    },
-    {
-      "id": "LE-18",
-      "section": "Supervision & Leadership",
-      "question": "Have supervisors recently visited the worksite?"
-    },
-    {
-      "id": "LE-18",
-      "section": "Supervision & Leadership",
-      "question": "Are any concerns raised by personnel being addressed effectively?"
-    },
-    {
-      "id": "LE-18",
-      "section": "Supervision & Leadership",
-      "question": "Do personnel feel adequately supported by site leadership?"
-    },
-    {
-      "id": "LE-22",
-      "section": "Stop the Job / Workforce Empowerment",
-      "question": "Do personnel understand their authority to stop the job?"
-    },
-    {
-      "id": "LE-22",
-      "section": "Stop the Job / Workforce Empowerment",
-      "question": "Would personnel feel comfortable challenging unsafe conditions?"
-    },
-    {
-      "id": "LE-22",
-      "section": "Stop the Job / Workforce Empowerment",
-      "question": "Can personnel explain what circumstances would trigger a Stop the Job intervention?"
-    },
-    {
-      "id": "LE-22",
-      "section": "Stop the Job / Workforce Empowerment",
-      "question": "Are there any barriers preventing personnel from raising concerns?"
-    },
-    {
-      "id": "LE-26",
-      "section": "Learning & Improvement",
-      "question": "Are personnel aware of relevant recent incidents or safety alerts relating to CoW?"
-    },
-    {
-      "id": "LE-26",
-      "section": "Learning & Improvement",
-      "question": "Are sites identifying gaps in permit quality or compliance through audits? And are they recorded and actioned, tracked to completion?"
-    },
-    {
-      "id": "LE-26",
-      "section": "Learning & Improvement",
-      "question": "Can personnel suggest any improvements to the Control of Work process?"
-    }
+  "pop": [
+    "8. Process Operating Procedures (POP):",
+    [
+      [
+        "a",
+        "Has a TBT been completed prior to work commencing"
+      ],
+      [
+        "b",
+        "Is the POP being followed in the correct sequence? Valve line up completed (where appropriate)."
+      ],
+      [
+        "c",
+        "Two person signatures applied for critical steps?"
+      ],
+      [
+        "d",
+        "Are operators using the most up to date POP’s – check how controlled documents are managed."
+      ],
+      [
+        "e",
+        "Is the POP in its review date? And has it been transferred to the new format (i.e. Task screening assessment)"
+      ],
+      [
+        "f",
+        "Are completed POP’s scanned and uploaded to a designated storage area"
+      ],
+      [
+        "g",
+        "Is the handover section signed at the end of the shift and countersigned by incoming and outgoing OTL?"
+      ]
+    ]
+  ],
+  "lead": [
+    [
+      "Permit to Work (PTW)",
+      [
+        "Are personnel able to explain the work they are undertaking?",
+        "Have personnel reviewed and understood the permit requirements?",
+        "Is the permit available at the work site and applicable to the work being undertaken?",
+        "Are routine permits being used for low-risk tasks and are not generic?",
+        "Do personnel understand when work should stop and the permit revalidated?"
+      ]
+    ],
+    [
+      "Hazard Identification & Risk Assessment",
+      [
+        "Can personnel explain the key hazards associated with the task?",
+        "Can personnel describe the controls used to manage the hazards?",
+        "Have any conditions changed since work commenced?",
+        "Have Major Accident Hazard (MAH) risks been considered where applicable?",
+        "Are environmental hazards and controls understood?"
+      ]
+    ],
+    [
+      "Toolbox Talks & Workforce Understanding",
+      [
+        "Have personnel participated in the Toolbox Talk for the task?",
+        "Can personnel explain the key points discussed during the Toolbox Talk?",
+        "Have personnel had the opportunity to ask questions or raise concerns?"
+      ]
+    ],
+    [
+      "Worksite Compliance",
+      [
+        "Are permit controls being implemented at the worksite?",
+        "Are barriers, isolations, PPE and other controls in place and maintained?",
+        "Is the work being carried out as described within the permit?",
+        "Are there any examples of conditions differing from those described in the permit?"
+      ]
+    ],
+    [
+      "Supervision & Leadership",
+      [
+        "Is supervision visible and appropriate for the task risk?",
+        "Have supervisors recently visited the worksite?",
+        "Are any concerns raised by personnel being addressed effectively?",
+        "Do personnel feel adequately supported by site leadership?"
+      ]
+    ],
+    [
+      "Stop the Job Culture",
+      [
+        "Do personnel understand their authority to stop the job?",
+        "Would personnel feel comfortable challenging unsafe conditions?",
+        "Can personnel explain what circumstances would trigger a Stop the Job intervention?",
+        "Are there any barriers preventing personnel from raising concerns?"
+      ]
+    ],
+    [
+      "Learning & Continuous Improvement",
+      [
+        "Are personnel aware of relevant recent incidents or safety alerts relating to CoW?",
+        "Are sites identifying gaps in permit quality or compliance through audits? And are they recorded and actioned, tracked to completion?",
+        "Can personnel suggest any improvements to the Control of Work process?"
+      ]
+    ]
   ]
 }
