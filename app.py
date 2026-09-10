@@ -90,6 +90,9 @@ def conn():
         reporting_period TEXT,
         site TEXT,
         kpi2_assurance_comparison TEXT DEFAULT 'Not assessed',
+        kpi2_independent_conformance INTEGER,
+        kpi2_independent_findings INTEGER DEFAULT 0,
+        kpi2_self_verification_findings INTEGER DEFAULT 0,
         kpi3_coverage TEXT DEFAULT 'Not assessed',
         kpi4_visit_justification TEXT DEFAULT 'Not required',
         kpi4_field_oim_coverage TEXT DEFAULT 'Not assessed',
@@ -98,6 +101,14 @@ def conn():
         kpi4_oim_missed_12m INTEGER DEFAULT 0,
         PRIMARY KEY(reporting_period,site)
     )""")
+    gov_existing={r[1] for r in c.execute("PRAGMA table_info(kpi_governance)").fetchall()}
+    for col,definition in {
+        "kpi2_independent_conformance":"INTEGER",
+        "kpi2_independent_findings":"INTEGER DEFAULT 0",
+        "kpi2_self_verification_findings":"INTEGER DEFAULT 0"
+    }.items():
+        if col not in gov_existing:
+            c.execute(f"ALTER TABLE kpi_governance ADD COLUMN {col} {definition}")
     c.commit(); return c
 
 def save(form_name,meta,responses,summary=""):
@@ -246,6 +257,27 @@ def audit_conformance(audits):
     if not results: return None
     return round(100*sum(r=="Compliant" for r in results)/len(results))
 
+def permit_sample_type(a):
+    """Classify Permit Quality evidence without changing the approved Perenco form wording."""
+    m=a.get("metadata",{}) or {}
+    routine=bool(m.get("routine"))
+    new_wcc=bool(m.get("new_wcc"))
+    if routine and not new_wcc:
+        return "Routine"
+    if new_wcc and not routine:
+        return "Non-Routine"
+    return "Unclassified"
+
+def tbt_sample_type(a):
+    v=str((a.get("metadata",{}) or {}).get("activity_type","")).strip()
+    if v=="Routine":
+        return "Routine"
+    if v=="New WCC":
+        return "Non-Routine"
+    if v=="POP":
+        return "POP"
+    return "Unclassified"
+
 def weeks_in_month(year,month):
     cal=calendar.monthcalendar(year,month)
     return sum(1 for wk in cal if wk[calendar.MONDAY] != 0)
@@ -305,13 +337,18 @@ def load_kpi5_summary():
 
 def get_governance(reporting_period,site):
     c=conn()
-    row=c.execute("""SELECT kpi2_assurance_comparison,kpi3_coverage,kpi4_visit_justification,
-        kpi4_field_oim_coverage,kpi4_finding_profile,kpi4_oim_consecutive_missed,kpi4_oim_missed_12m
+    row=c.execute("""SELECT kpi2_assurance_comparison,kpi2_independent_conformance,
+        kpi2_independent_findings,kpi2_self_verification_findings,kpi3_coverage,
+        kpi4_visit_justification,kpi4_field_oim_coverage,kpi4_finding_profile,
+        kpi4_oim_consecutive_missed,kpi4_oim_missed_12m
         FROM kpi_governance WHERE reporting_period=? AND site=?""",(reporting_period,site)).fetchone()
     c.close()
     if not row:
         return {
             "kpi2_assurance_comparison":"Not assessed",
+            "kpi2_independent_conformance":None,
+            "kpi2_independent_findings":0,
+            "kpi2_self_verification_findings":0,
             "kpi3_coverage":"Not assessed",
             "kpi4_visit_justification":"Not required",
             "kpi4_field_oim_coverage":"Not assessed",
@@ -319,20 +356,25 @@ def get_governance(reporting_period,site):
             "kpi4_oim_consecutive_missed":0,
             "kpi4_oim_missed_12m":0
         }
-    keys=["kpi2_assurance_comparison","kpi3_coverage","kpi4_visit_justification",
-          "kpi4_field_oim_coverage","kpi4_finding_profile","kpi4_oim_consecutive_missed",
-          "kpi4_oim_missed_12m"]
+    keys=["kpi2_assurance_comparison","kpi2_independent_conformance",
+          "kpi2_independent_findings","kpi2_self_verification_findings","kpi3_coverage",
+          "kpi4_visit_justification","kpi4_field_oim_coverage","kpi4_finding_profile",
+          "kpi4_oim_consecutive_missed","kpi4_oim_missed_12m"]
     return dict(zip(keys,row))
 
 def save_governance(reporting_period,site,g):
     c=conn()
     c.execute("""INSERT OR REPLACE INTO kpi_governance
-        (reporting_period,site,kpi2_assurance_comparison,kpi3_coverage,kpi4_visit_justification,
-         kpi4_field_oim_coverage,kpi4_finding_profile,kpi4_oim_consecutive_missed,kpi4_oim_missed_12m)
-         VALUES (?,?,?,?,?,?,?,?,?)""",
-        (reporting_period,site,g["kpi2_assurance_comparison"],g["kpi3_coverage"],
-         g["kpi4_visit_justification"],g["kpi4_field_oim_coverage"],g["kpi4_finding_profile"],
-         int(g["kpi4_oim_consecutive_missed"]),int(g["kpi4_oim_missed_12m"])))
+        (reporting_period,site,kpi2_assurance_comparison,kpi2_independent_conformance,
+         kpi2_independent_findings,kpi2_self_verification_findings,kpi3_coverage,
+         kpi4_visit_justification,kpi4_field_oim_coverage,kpi4_finding_profile,
+         kpi4_oim_consecutive_missed,kpi4_oim_missed_12m)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (reporting_period,site,g["kpi2_assurance_comparison"],g["kpi2_independent_conformance"],
+         int(g["kpi2_independent_findings"]),int(g["kpi2_self_verification_findings"]),
+         g["kpi3_coverage"],g["kpi4_visit_justification"],g["kpi4_field_oim_coverage"],
+         g["kpi4_finding_profile"],int(g["kpi4_oim_consecutive_missed"]),
+         int(g["kpi4_oim_missed_12m"])))
     c.commit(); c.close()
 
 def kpi5_position(records, report_year, report_month, site_filter="All"):
@@ -453,7 +495,8 @@ def seed_demo_data():
             {"section":"1. Planning","item":"a","question":"Is the activity planned to be undertaken outside the next 24 hours?","response":"Yes","smart_action":""},
             {"section":"1. Planning","item":"b","question":"Has the WCC been discussed in the daily permit meeting?","response":"Yes","smart_action":""},
             {"section":"2. Raising a NEW WCC","item":"a","question":"Is there a brief, clear and concise summary of scope?","response":"No","smart_action":"Improve the WCC scope description and verify it before issue."},
-        ]
+        ],
+        meta_extra={"new_wcc":True,"routine":False}
     ))
     records.append(rec(
         "DEMO-PQ-SC-002","Control of Work: Permit Quality","Dimlington","Demo Site Controller","DEMO-WCC-SC-002",
@@ -461,7 +504,8 @@ def seed_demo_data():
             {"section":"1. Planning","item":"a","question":"Is the activity planned to be undertaken outside the next 24 hours?","response":"Yes","smart_action":""},
             {"section":"1. Planning","item":"b","question":"Has the WCC been discussed in the daily permit meeting?","response":"Yes","smart_action":""},
             {"section":"2. Raising a NEW WCC","item":"a","question":"Is there a brief, clear and concise summary of scope?","response":"Yes","smart_action":""},
-        ]
+        ],
+        meta_extra={"new_wcc":False,"routine":True}
     ))
 
     # KPI 2 - Asset Superintendent Permit Quality
@@ -471,7 +515,8 @@ def seed_demo_data():
             {"section":"1. Planning","item":"a","question":"Is the activity planned to be undertaken outside the next 24 hours?","response":"Yes","smart_action":""},
             {"section":"4. Identifying the Correct WCC","item":"a","question":"Has the correct Type of WCC been selected appropriate for the task?","response":"Yes","smart_action":""},
             {"section":"12. Isolation Requirements","item":"a","question":"Have all controls within the ICC been acknowledged and transferred to the WCC?","response":"Yes","smart_action":""},
-        ]
+        ],
+        meta_extra={"new_wcc":False,"routine":True}
     ))
 
     # KPI 4 - W2W OOE and Medic/HSEA visits
@@ -480,21 +525,24 @@ def seed_demo_data():
         [
             {"section":"1. TBT Hazard Identification","item":"a","question":"TBT Lead discusses the hazards and controls associated to the task/activity","response":"Yes","smart_action":""},
             {"section":"4. Permit Compliance","item":"a","question":"Is there an up-to-date copy of the WCC at the worksite and signed by all members of the work party?","response":"No","smart_action":"Confirm the current WCC is available at the worksite and obtain all required signatures."},
-        ]
+        ],
+        meta_extra={"activity_type":"New WCC"}
     ))
     records.append(rec(
         "DEMO-TBT-HSEA-001","Control of Work: Toolbox Talk, Permit Compliance & Operating Procedures","Southern W2W","Demo Medic HSEA","DEMO-TBT-HSEA-001",
         [
             {"section":"1. TBT Hazard Identification","item":"a","question":"TBT Lead discusses the hazards and controls associated to the task/activity","response":"Yes","smart_action":""},
             {"section":"3. Hazards associated to the Worksite and Equipment","item":"c","question":"Are all access and egress points checked and clear?","response":"Yes","smart_action":""},
-        ]
+        ],
+        meta_extra={"activity_type":"Routine"}
     ))
     records.append(rec(
         "DEMO-TBT-OIM-001","Control of Work: Toolbox Talk, Permit Compliance & Operating Procedures","Cleeton","Demo Field Hub OIM","DEMO-TBT-OIM-001",
         [
             {"section":"1. TBT Hazard Identification","item":"a","question":"TBT Lead discusses the hazards and controls associated to the task/activity","response":"Yes","smart_action":""},
             {"section":"4. Permit Compliance","item":"a","question":"Is there an up-to-date copy of the WCC at the worksite and signed by all members of the work party?","response":"Yes","smart_action":""},
-        ]
+        ],
+        meta_extra={"activity_type":"Routine"}
     ))
 
     # KPI 3 - two synthetic leadership engagements in the current quarter.
@@ -701,23 +749,29 @@ def render_dashboard():
     reporting_period=f"{year:04d}-{month:02d}"
     gov=get_governance(reporting_period,site)
     with st.expander("KPI Review Inputs",expanded=False):
-        st.caption("Required KPI criteria not captured directly by the assurance forms.")
+        st.caption("Required KPI criteria not captured directly by the approved assurance forms.")
         g1,g2=st.columns(2)
         with g1:
             k2_compare=st.selectbox("KPI 2 · Site self-verification vs independent assurance",
                 ["Not assessed","Aligned","Significant difference"],
                 index=["Not assessed","Aligned","Significant difference"].index(gov["kpi2_assurance_comparison"]))
+            k2_ind_conf=st.number_input("KPI 2 · Independent assurance conformance %",0,100,
+                int(gov["kpi2_independent_conformance"] or 0),
+                help="Enter the relevant independent-assurance conformance result for the review period. Leave at 0 if not assessed.")
+            k2_ind_find=st.number_input("KPI 2 · Independent assurance findings",0,999,int(gov["kpi2_independent_findings"]))
+            k2_self_find=st.number_input("KPI 2 · Site self-verification findings",0,999,int(gov["kpi2_self_verification_findings"]))
             k3_cov=st.selectbox("KPI 3 · NUI visitation coverage",
                 ["Not assessed","Reasonable","Over / under coverage"],
-                index=["Not assessed","Reasonable","Over / under coverage"].index(gov["kpi3_coverage"]))
+                index=["Not assessed","Reasonable","Over / under coverage"].index(gov["kpi3_coverage"]),
+                help="Perenco requires reasonable coverage but does not define a numerical threshold.")
+        with g2:
             k4_just=st.selectbox("KPI 4 · Missed-visit justification",
                 ["Not required","Suitable","Outside planned quarter","Not suitable","Not provided"],
                 index=["Not required","Suitable","Outside planned quarter","Not suitable","Not provided"].index(gov["kpi4_visit_justification"]))
-        with g2:
             k4_cov=st.selectbox("KPI 4 · Field Hub OIM NUI coverage",
                 ["Not assessed","Reasonable","Limited"],
                 index=["Not assessed","Reasonable","Limited"].index(gov["kpi4_field_oim_coverage"]))
-            k4_find=st.selectbox("KPI 4 · Level 4 finding profile",
+            k4_find=st.selectbox("KPI 4 · Level 4 TBT / Compliance Monitoring finding profile",
                 ["None","Isolated / recurring minor","Significant / repeat"],
                 index=["None","Isolated / recurring minor","Significant / repeat"].index(gov["kpi4_finding_profile"]))
             q1,q2=st.columns(2)
@@ -725,41 +779,76 @@ def render_dashboard():
             k4_12=q2.number_input("OIM missed quarters in rolling 12m",0,12,int(gov["kpi4_oim_missed_12m"]))
         if st.button("Save KPI review inputs",use_container_width=True):
             save_governance(reporting_period,site,{
-                "kpi2_assurance_comparison":k2_compare,"kpi3_coverage":k3_cov,
+                "kpi2_assurance_comparison":k2_compare,
+                "kpi2_independent_conformance":None if k2_ind_conf==0 else int(k2_ind_conf),
+                "kpi2_independent_findings":k2_ind_find,
+                "kpi2_self_verification_findings":k2_self_find,
+                "kpi3_coverage":k3_cov,
                 "kpi4_visit_justification":k4_just,"kpi4_field_oim_coverage":k4_cov,
                 "kpi4_finding_profile":k4_find,"kpi4_oim_consecutive_missed":k4_consec,
                 "kpi4_oim_missed_12m":k4_12})
             st.success("KPI review inputs saved.")
             st.rerun()
 
-    # KPI 1
+    # KPI 1 - Site Controller Permit Non-Compliance (Tier 3)
+    # Perenco requires routine and non-routine permit samples to be reported separately.
     pmap=get_role_mapping("permit")
     sc=[a for a in permit if pmap.get(a["auditor"])=="Site Controller"]
     asc=[a for a in permit if pmap.get(a["auditor"])=="Asset Superintendent"]
     wks=weeks_in_month(year,month)
-    site_targets={
-        "Dimlington":2,"Cleeton":2,"Ravenspurn North":2,"Northern NUI's":3,"Northern NUIs":3,
-        "Bacton":2,"Leman 27BC":2,"Leman 27B":2,"Southern NUI's":3,"Southern NUIs":3
+
+    # Weekly target table from the KPI document: (routine, non-routine).
+    k1_targets={
+        "Dimlington":(1,1),"Cleeton":(1,1),"Ravenspurn North":(1,1),
+        "Northern NUI's":(2,1),"Northern NUIs":(2,1),
+        "Bacton":(1,1),"Leman 27BC":(1,1),"Leman 27B":(1,1),
+        "Southern NUI's":(2,1),"Southern NUIs":(2,1)
     }
-    if site!="All" and site in site_targets:
-        k1_plan=site_targets[site]*wks
+    if site!="All" and site in k1_targets:
+        rt,nrt=k1_targets[site]
+        k1_routine_plan=rt*wks
+        k1_nonroutine_plan=nrt*wks
     elif site=="All":
-        # 7 defined site groupings: 2+2+2+3+2+2+3 = 16 audits/week
-        k1_plan=16*wks
+        k1_routine_plan=9*wks
+        k1_nonroutine_plan=7*wks
     else:
-        k1_plan=None
+        k1_routine_plan=None
+        k1_nonroutine_plan=None
+    k1_plan=(k1_routine_plan+k1_nonroutine_plan) if (k1_routine_plan is not None and k1_nonroutine_plan is not None) else None
+
+    k1_routine=[a for a in sc if permit_sample_type(a)=="Routine"]
+    k1_nonroutine=[a for a in sc if permit_sample_type(a)=="Non-Routine"]
+    k1_unclassified=[a for a in sc if permit_sample_type(a)=="Unclassified"]
     k1_conf=audit_conformance(sc)
     k1_pct=round(100*len(sc)/k1_plan) if (sc and k1_plan) else None
     k1_status=status_both(k1_pct,k1_conf) if (sc and k1_plan) else "Not enough data"
 
-    # KPI 2
+    # KPI 2 - Asset Superintendent Permit Non-Compliance (Tier 2)
+    # One audit per week, rotationally across the nine defined asset groups.
+    k2_asset_groups=[
+        "Ravenspurn North","Cleeton","Northern Flying Team","Northern W2W","Dimlington",
+        "27B","Southern Flying Team","Southern W2W","Bacton"
+    ]
+    k2_aliases={"Leman 27B":"27B","Leman 27BC":"27B","RN":"Ravenspurn North"}
+    def k2_group(a):
+        raw=str(a.get("site","")).strip()
+        return k2_aliases.get(raw,raw) if k2_aliases.get(raw,raw) in k2_asset_groups else None
+
     k2_plan=wks
     k2_conf=audit_conformance(asc)
     k2_pct=round(100*len(asc)/k2_plan) if asc else None
     k2_status=status_both(k2_pct,k2_conf) if asc else "Not enough data"
+    k2_routine=[a for a in asc if permit_sample_type(a)=="Routine"]
+    k2_nonroutine=[a for a in asc if permit_sample_type(a)=="Non-Routine"]
+    k2_unclassified=[a for a in asc if permit_sample_type(a)=="Unclassified"]
+    k2_coverage=sorted(set(g for g in (k2_group(a) for a in asc) if g))
 
-    # KPI 3 - use the Leadership form's required Overall CoW Indicator.
-    # The source form states that one No/non-conformance makes the checklist "Does not meet CoW Standard".
+    # KPI 3 - Onshore Leadership NUI Engagement (Tier 2)
+    # The source checklist states that one No/non-conformance makes the whole checklist
+    # "Does not meet CoW Standard". Volume is not forced Red mid-quarter solely because
+    # the quarterly target has not yet been reached.
+    lmap=get_role_mapping("lead")
+    valid_k3_roles=("Operations Director","Deputy Operations Director","Asset Superintendent","Ops Support Manager")
     k3_visits=len(lead)
     k3_results=[]
     for a in lead:
@@ -768,19 +857,28 @@ def render_dashboard():
         elif v=="does not meet cow standard": k3_results.append(False)
     k3_conf=round(100*sum(k3_results)/len(k3_results)) if k3_results else None
     k3_question_conf=question_conformance(lead)
+    k3_teams=sorted(set(a["site"] for a in lead if a.get("site")))
+    k3_roles=sorted(set(lmap.get(a["auditor"]) for a in lead if lmap.get(a["auditor"]) in valid_k3_roles))
+
     if not lead or k3_conf is None:
         k3_status="Not enough data"
-    elif k3_visits<=1 or k3_conf<70:
+    elif k3_conf<70:
         k3_status="Red"
+    elif 70<=k3_conf<=89 or gov["kpi3_coverage"]=="Over / under coverage":
+        k3_status="Amber"
     elif k3_visits>=3 and k3_conf>=90 and gov["kpi3_coverage"]=="Reasonable":
         k3_status="Green"
-    elif k3_visits==2 or 70<=k3_conf<=89 or gov["kpi3_coverage"]=="Over / under coverage":
+    elif quarter_complete and k3_visits<=1:
+        k3_status="Red"
+    elif quarter_complete and k3_visits==2:
         k3_status="Amber"
+    elif not quarter_complete and k3_visits<3:
+        k3_status="In progress"
     else:
         k3_status="Needs review"
 
-    # KPI 4 - calculate from valid role-mapped Level 4 records.
-    # Unmapped records are flagged separately instead of blocking valid mapped evidence.
+    # KPI 4 - Site Leadership NUI Visits (Tier 3)
+    # Uses the exact "Level 4 TBT / Compliance Monitoring" terminology.
     tmap=get_role_mapping("tbt")
     valid_k4_roles=("W2W OOE","Medic HSEA","Field Hub OIM")
     tbt_all=[a for a in audits if "Toolbox Talk" in a["form_name"] and a["audit_date"] and (site=="All" or a["site"]==site)]
@@ -795,39 +893,51 @@ def render_dashboard():
     medp=round(100*role_counts["Medic HSEA"]/wks) if wks else None
     has_any_k4_role=bool(tbt_mapped)
     mapping_ready=has_any_k4_role
+    k4_routine=sum(1 for a in tbt_mapped if tbt_sample_type(a)=="Routine")
+    k4_nonroutine=sum(1 for a in tbt_mapped if tbt_sample_type(a)=="Non-Routine")
+    k4_pop=sum(1 for a in tbt_mapped if tbt_sample_type(a)=="POP")
+    k4_unclassified=sum(1 for a in tbt_mapped if tbt_sample_type(a)=="Unclassified")
 
-    # Prior-quarter Field Hub OIM count supports the two-consecutive-quarter Red rule.
     prev_q_end=q_start-timedelta(days=1)
-    prev_q= ((prev_q_end.month-1)//3)+1
+    prev_q=((prev_q_end.month-1)//3)+1
     prev_qmonths=list(range((prev_q-1)*3+1,(prev_q-1)*3+4))
     prev_q_field_oim=sum(1 for a in tbt_all if datetime.fromisoformat(a["audit_date"]).year==prev_q_end.year and datetime.fromisoformat(a["audit_date"]).month in prev_qmonths and tmap.get(a["auditor"])=="Field Hub OIM")
 
     if not mapping_ready or k4_conf is None:
         k4_status="Not enough data"
     else:
-        justification_red=gov["kpi4_visit_justification"] in ("Not provided","Not suitable")
-        finding_red=gov["kpi4_finding_profile"]=="Significant / repeat"
-        finding_amber=gov["kpi4_finding_profile"]=="Isolated / recurring minor"
-        oim_red=int(gov["kpi4_oim_consecutive_missed"])>=2 or int(gov["kpi4_oim_missed_12m"])>2
-        oim_amber=gov["kpi4_field_oim_coverage"]=="Limited" or gov["kpi4_visit_justification"]=="Outside planned quarter"
-
         ooe_state="Green" if ooep>=100 else ("Amber" if ooep>=50 else "Red")
         if medp>=100: medic_state="Green"
         elif medp>=75: medic_state="Amber"
         elif medp<50: medic_state="Red"
-        else: medic_state="Needs review"
+        else: medic_state="Needs review"  # Perenco source does not define the 50–74% band.
+
+        finding_red=gov["kpi4_finding_profile"]=="Significant / repeat"
+        finding_amber=gov["kpi4_finding_profile"]=="Isolated / recurring minor"
         l4_state="Red" if (k4_conf<70 or finding_red) else ("Amber" if (k4_conf<90 or finding_amber) else "Green")
+
+        oim_red=int(gov["kpi4_oim_consecutive_missed"])>=2 or int(gov["kpi4_oim_missed_12m"])>2
+        oim_amber=gov["kpi4_field_oim_coverage"]=="Limited" or gov["kpi4_visit_justification"]=="Outside planned quarter"
+
+        missed_monthly=(ooep<100 or medp<100)
+        missed_oim=(quarter_complete and q_field_oim<1)
+        missed_target=missed_monthly or missed_oim
+        justification_red=missed_target and gov["kpi4_visit_justification"] in ("Not provided","Not suitable")
 
         if justification_red or ooe_state=="Red" or medic_state=="Red" or l4_state=="Red" or oim_red:
             k4_status="Red"
-        elif medic_state=="Needs review" or gov["kpi4_field_oim_coverage"]=="Not assessed":
+        elif medic_state=="Needs review":
             k4_status="Needs review"
         elif ooe_state=="Green" and medic_state=="Green" and l4_state=="Green" and q_field_oim>=1 and gov["kpi4_field_oim_coverage"]=="Reasonable":
             k4_status="Green"
         elif ooe_state=="Amber" or medic_state=="Amber" or l4_state=="Amber" or oim_amber:
             k4_status="Amber"
-        elif q_field_oim==0:
-            k4_status="In progress" if not quarter_complete else "Needs review"
+        elif q_field_oim==0 and not quarter_complete:
+            k4_status="In progress"
+        elif q_field_oim==0 and quarter_complete:
+            k4_status="Needs review"
+        elif gov["kpi4_field_oim_coverage"]=="Not assessed":
+            k4_status="Needs review"
         else:
             k4_status="Needs review"
 
@@ -840,10 +950,10 @@ def render_dashboard():
     cols=st.columns(5)
     with cols[0]:
         kpi_card("KPI 1 | TIER 3","Site Controller Permit Non-Compliance","—" if k1_pct is None else f"{len(sc)} / {k1_plan}",k1_status,
-                 "Role map required." if not sc else f"{k1_pct}% plan complete | {k1_conf if k1_conf is not None else '—'}% audit conformance")
+                 "Role map required." if not sc else f"Routine {len(k1_routine)}/{k1_routine_plan} · Non-routine {len(k1_nonroutine)}/{k1_nonroutine_plan} | {k1_conf if k1_conf is not None else '—'}% audit conformance")
     with cols[1]:
         kpi_card("KPI 2 | TIER 2","Asset Superintendent Permit Non-Compliance","—" if k2_pct is None else f"{len(asc)} / {k2_plan}",k2_status,
-                 "Role map required." if not asc else f"{k2_pct}% plan complete | {k2_conf if k2_conf is not None else '—'}% audit conformance")
+                 "Role map required." if not asc else f"Routine {len(k2_routine)} · Non-routine {len(k2_nonroutine)} | {len(k2_coverage)}/9 asset groups sampled")
     with cols[2]:
         kpi_card("KPI 3 | TIER 2","Onshore Leadership NUI Engagement","—" if not lead else f"{k3_visits} of 3",k3_status,
                  "No quarter data." if not lead else f"{k3_conf if k3_conf is not None else '—'}% checklists meeting CoW standard | Q{q} {'complete' if quarter_complete else 'in progress'}")
@@ -860,7 +970,7 @@ def render_dashboard():
             k4_headline="—"
         else:
             k4_headline=f"{role_counts['W2W OOE']}/{wks} · {role_counts['Medic HSEA']}/{wks} · {q_field_oim}/1"
-            k4_detail=f"OOE · Medic/HSEA · Field OIM | Level 4 conformance {k4_conf}%"
+            k4_detail=f"OOE · Medic/HSEA · Field OIM | Level 4 TBT / Compliance Monitoring {k4_conf}%"
             if tbt_unmapped:
                 k4_detail += f" | {len(tbt_unmapped)} unmapped audit(s) excluded"
         kpi_card("KPI 4 | TIER 3","Site Leadership NUI Visits",k4_headline,k4_status,k4_detail)
@@ -876,7 +986,7 @@ def render_dashboard():
     assessed=[x for x in statuses if x in ("Green","Amber","Red")]
     if "Red" in assessed: overall="RED"; css="dash-bad"
     elif "Amber" in assessed: overall="AMBER"; css="dash-warn"
-    elif assessed and all(x=="Green" for x in assessed) and len(assessed)==4: overall="GREEN"; css="dash-good"
+    elif assessed and all(x=="Green" for x in assessed) and len(assessed)==5: overall="GREEN"; css="dash-good"
     else: overall="PARTIAL DATA"; css=""
     notes=[]
     if k1_status in ("Amber","Red"): notes.append(f"KPI 1 is {k1_status}: review Site Controller sampling delivery and permit conformance.")
@@ -906,7 +1016,7 @@ Minimum 1 permit audit per week on a rotational basis. Same completion/conforman
 Minimum 3 NUI engagements per quarter. Green also requires 90–100% checklist compliance and reasonable NUI coverage. Amber: 2 engagements and/or 70–89% compliance and/or over/under coverage. Red: 1 or fewer engagements and/or <70% compliance.
 
 **KPI 4 – Site Leadership (Tier 3)**  
-W2W OOE: minimum 1/week. Medic/HSEA: minimum 1/week. Field Hub OIM: minimum 1/quarter. Level 4 monitoring: Green ≥90%, Amber 70–89%, Red <70%. Missed-visit justification, NUI coverage, repeat/significant findings and Field Hub OIM missed-quarter rules also affect status.
+W2W OOE: minimum 1/week. Medic/HSEA: minimum 1/week. Field Hub OIM: minimum 1/quarter. Level 4 TBT / Compliance Monitoring: Green ≥90%, Amber 70–89%, Red <70%. Missed-visit justification, NUI coverage, repeat/significant findings and Field Hub OIM missed-quarter rules also affect status.
 
 **KPI 5 – Increased Incidents During Permit Controlled Activity (Tier 1)**  
 Rolling 12-month MOI trend. Green: no increase and no serious/repeat trigger. Amber: increasing trend or a single HiPO, significant injury, Loss of Containment or repeat event theme. Red: significant increase, multiple serious events, major Loss of Containment or recurring permit-control failure.
@@ -917,36 +1027,54 @@ Rolling 12-month MOI trend. Green: no increase and no serious/repeat trigger. Am
             a,b=st.columns(2)
             a.metric("Audits completed",len(sc) if sc else "—")
             b.metric("Required audits for selected period",k1_plan if k1_plan else "—")
+            a.metric("Routine",f"{len(k1_routine)} / {k1_routine_plan}" if k1_routine_plan is not None else "—")
+            b.metric("Non-routine",f"{len(k1_nonroutine)} / {k1_nonroutine_plan}" if k1_nonroutine_plan is not None else "—")
             a.metric("Plan completion",f"{k1_pct}%" if k1_pct is not None else "—")
-            b.metric("Audit conformance",f"{k1_conf}%" if k1_conf is not None else "—")
+            b.metric("Whole-permit conformance",f"{k1_conf}%" if k1_conf is not None else "—")
+            if k1_unclassified:
+                st.warning(f"{len(k1_unclassified)} KPI 1 permit audit(s) are unclassified as Routine or Non-Routine and should be corrected.")
             if site=="All" and k1_plan:
-                st.caption("All sites selected: requirement is the aggregate of the seven Site Controller sampling groups in the KPI document.")
-            st.caption(f"Requirement calculated from the Perenco site-specific weekly sampling table for the selected reporting period ({wks} reporting weeks).")
+                st.caption("All sites selected: target is the aggregate of the seven Site Controller sampling groups. The monthly total is an implementation conversion of the source weekly requirement.")
+            st.caption(f"Reporting basis used by this UAT: {wks} calendar reporting weeks. Perenco defines the requirement weekly but does not prescribe a monthly conversion method.")
 
             st.markdown("### KPI 3 · Onshore Leadership")
             a,b=st.columns(2)
             a.metric("Engagements",f"{k3_visits} of 3" if lead else "—")
             b.metric("Checklists meeting CoW standard",f"{k3_conf}%" if k3_conf is not None else "—")
-            a.metric("Locations / teams",len(set(x["site"] for x in lead if x["site"])) if lead else "—")
+            a.metric("NUI teams engaged",f"{len(k3_teams)} / 18" if lead else "—")
             b.metric("Quarter",f"Q{q} · {'Complete' if quarter_complete else 'In progress'}" if lead else "—")
-            st.caption(f"Quarterly target: minimum 3 engagements. NUI coverage assessment: {gov['kpi3_coverage']}.")
+            a.metric("Leadership roles visible",f"{len(k3_roles)} / 4" if lead else "—")
+            b.metric("Coverage assessment",gov["kpi3_coverage"])
+            st.caption("Perenco requires reasonable coverage across the 18 NUI teams (12 W2W and 6 Flying Teams). No numerical coverage threshold has been invented.")
 
         with c2:
             st.markdown("### KPI 2 · Asset Superintendent")
             a,b=st.columns(2)
             a.metric("Audits completed",len(asc) if asc else "—")
             b.metric("Required audits for selected period",k2_plan)
+            a.metric("Routine",len(k2_routine) if asc else "—")
+            b.metric("Non-routine",len(k2_nonroutine) if asc else "—")
             a.metric("Plan completion",f"{k2_pct}%" if k2_pct is not None else "—")
-            b.metric("Audit conformance",f"{k2_conf}%" if k2_conf is not None else "—")
-            st.caption(f"Minimum 1 permit audit per week on a rotational basis. Self-verification vs independent assurance: {gov['kpi2_assurance_comparison']}.")
+            b.metric("Whole-permit conformance",f"{k2_conf}%" if k2_conf is not None else "—")
+            a.metric("Rotational asset coverage",f"{len(k2_coverage)} / 9")
+            b.metric("Independent assurance conformance",f"{gov['kpi2_independent_conformance']}%" if gov["kpi2_independent_conformance"] is not None else "Not assessed")
+            a.metric("Self-verification findings",gov["kpi2_self_verification_findings"])
+            b.metric("Independent findings",gov["kpi2_independent_findings"])
+            if k2_unclassified:
+                st.warning(f"{len(k2_unclassified)} KPI 2 permit audit(s) are unclassified as Routine or Non-Routine.")
+            st.caption(f"Minimum 1 permit audit per week on a rotational basis across RN, Cleeton, Northern Flying Team, Northern W2W, Dimlington, 27B, Southern Flying Team, Southern W2W and Bacton. Alignment review: {gov['kpi2_assurance_comparison']}.")
 
             st.markdown("### KPI 4 · Site Leadership")
             a,b=st.columns(2)
             a.metric("W2W OOE",f"{role_counts['W2W OOE']} / {wks} ({ooep}%)" if mapping_ready else "Not mapped")
             b.metric("Medic / HSEA",f"{role_counts['Medic HSEA']} / {wks} ({medp}%)" if mapping_ready else "Not mapped")
             a.metric("Field Hub OIM",f"{q_field_oim} / 1 quarter" if mapping_ready else "Not mapped")
-            b.metric("Level 4 audit conformance",f"{k4_conf}%" if (mapping_ready and k4_conf is not None) else "—")
-            st.caption(f"Role-based visit delivery and Level 4 conformance are assessed against the Perenco KPI thresholds. Justification: {gov['kpi4_visit_justification']}; OIM coverage: {gov['kpi4_field_oim_coverage']}; finding profile: {gov['kpi4_finding_profile']}.")
+            b.metric("Level 4 TBT / Compliance Monitoring",f"{k4_conf}%" if (mapping_ready and k4_conf is not None) else "—")
+            a.metric("Routine / Non-routine",f"{k4_routine} / {k4_nonroutine}" if mapping_ready else "—")
+            b.metric("POP samples",k4_pop if mapping_ready else "—")
+            a.metric("Missed-visit justification",gov["kpi4_visit_justification"])
+            b.metric("Field Hub OIM coverage",gov["kpi4_field_oim_coverage"])
+            st.caption(f"Finding profile: {gov['kpi4_finding_profile']}. OIM missed-quarter history: {gov['kpi4_oim_consecutive_missed']} consecutive; {gov['kpi4_oim_missed_12m']} in rolling 12 months. The Medic/HSEA 50–74% band remains 'Needs review' because the source table does not assign a RAG status to that range.")
 
     with tab2:
         findings=[]
@@ -1013,6 +1141,8 @@ elif page=="Permit Quality":
     if st.button("Submit Permit Quality Audit",type="primary",use_container_width=True):
         blanks=[r for r in rs if r["response"] is None]
         if not meta["site"] or not meta["auditor"]: st.error("Complete SITE / INSTALLATION and AUDITOR.")
+        elif bool(meta.get("new_wcc"))==bool(meta.get("routine")):
+            st.error("For KPI reporting, select either New WCC or Routine so the permit sample is classified as non-routine or routine.")
         elif blanks:
             st.error(f"{len(blanks)} question(s) still require a response. Taking you to the first unanswered question.")
             jump_to(blanks[0]["anchor"])
