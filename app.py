@@ -74,6 +74,30 @@ def conn():
         comments TEXT,
         demo INTEGER DEFAULT 0
     )""")
+    existing={r[1] for r in c.execute("PRAGMA table_info(kpi5_summary)").fetchall()}
+    for col,definition in {
+        "hipo_count":"INTEGER DEFAULT 0",
+        "significant_injury_count":"INTEGER DEFAULT 0",
+        "loc_count":"INTEGER DEFAULT 0",
+        "major_loc_count":"INTEGER DEFAULT 0",
+        "repeat_event_theme":"TEXT DEFAULT 'No'",
+        "recurring_permit_failure":"TEXT DEFAULT 'No'",
+        "significant_increase":"TEXT DEFAULT 'No'"
+    }.items():
+        if col not in existing:
+            c.execute(f"ALTER TABLE kpi5_summary ADD COLUMN {col} {definition}")
+    c.execute("""CREATE TABLE IF NOT EXISTS kpi_governance (
+        reporting_period TEXT,
+        site TEXT,
+        kpi2_assurance_comparison TEXT DEFAULT 'Not assessed',
+        kpi3_coverage TEXT DEFAULT 'Not assessed',
+        kpi4_visit_justification TEXT DEFAULT 'Not required',
+        kpi4_field_oim_coverage TEXT DEFAULT 'Not assessed',
+        kpi4_finding_profile TEXT DEFAULT 'None',
+        kpi4_oim_consecutive_missed INTEGER DEFAULT 0,
+        kpi4_oim_missed_12m INTEGER DEFAULT 0,
+        PRIMARY KEY(reporting_period,site)
+    )""")
     c.commit(); return c
 
 def save(form_name,meta,responses,summary=""):
@@ -233,7 +257,7 @@ def status_both(plan_pct, conf):
     return "Amber"
 
 def status_class(s):
-    return {"Green":"green","Amber":"amber","Red":"red"}.get(s,"")
+    return {"Green":"green","Amber":"amber","Red":"red","Needs review":"amber","In progress":""}.get(s,"")
 
 def kpi_card(title,name,value,status,detail):
     cls=status_class(status)
@@ -250,108 +274,150 @@ def kpi_card(title,name,value,status,detail):
 
 
 
+
 def save_kpi5_summary(data):
     rid="KPI5-"+datetime.now().strftime("%Y%m")+"-"+uuid.uuid4().hex[:6].upper()
     c=conn()
     c.execute("""INSERT INTO kpi5_summary
         (record_id,submitted_at,reporting_month,site,rolling_12m_count,previous_12m_count,
-         trigger_level,comments,demo)
-        VALUES (?,?,?,?,?,?,?,?,?)""",
+         trigger_level,comments,demo,hipo_count,significant_injury_count,loc_count,major_loc_count,
+         repeat_event_theme,recurring_permit_failure,significant_increase)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (rid,datetime.now().isoformat(timespec="seconds"),data["reporting_month"],data["site"],
-         int(data["rolling_12m_count"]),int(data["previous_12m_count"]),data["trigger_level"],
-         data["comments"],0))
+         int(data["rolling_12m_count"]),int(data["previous_12m_count"]),"",data["comments"],0,
+         int(data["hipo_count"]),int(data["significant_injury_count"]),int(data["loc_count"]),
+         int(data["major_loc_count"]),data["repeat_event_theme"],data["recurring_permit_failure"],
+         data["significant_increase"]))
     c.commit(); c.close()
     return rid
 
 def load_kpi5_summary():
     c=conn()
     rows=c.execute("""SELECT record_id,submitted_at,reporting_month,site,rolling_12m_count,
-        previous_12m_count,trigger_level,comments,demo
+        previous_12m_count,comments,demo,hipo_count,significant_injury_count,loc_count,
+        major_loc_count,repeat_event_theme,recurring_permit_failure,significant_increase
         FROM kpi5_summary ORDER BY reporting_month DESC, submitted_at DESC""").fetchall()
     c.close()
-    cols=["record_id","submitted_at","reporting_month","site","rolling_12m_count",
-          "previous_12m_count","trigger_level","comments","demo"]
+    cols=["record_id","submitted_at","reporting_month","site","rolling_12m_count","previous_12m_count",
+          "comments","demo","hipo_count","significant_injury_count","loc_count","major_loc_count",
+          "repeat_event_theme","recurring_permit_failure","significant_increase"]
     return [dict(zip(cols,r)) for r in rows]
+
+def get_governance(reporting_period,site):
+    c=conn()
+    row=c.execute("""SELECT kpi2_assurance_comparison,kpi3_coverage,kpi4_visit_justification,
+        kpi4_field_oim_coverage,kpi4_finding_profile,kpi4_oim_consecutive_missed,kpi4_oim_missed_12m
+        FROM kpi_governance WHERE reporting_period=? AND site=?""",(reporting_period,site)).fetchone()
+    c.close()
+    if not row:
+        return {
+            "kpi2_assurance_comparison":"Not assessed",
+            "kpi3_coverage":"Not assessed",
+            "kpi4_visit_justification":"Not required",
+            "kpi4_field_oim_coverage":"Not assessed",
+            "kpi4_finding_profile":"None",
+            "kpi4_oim_consecutive_missed":0,
+            "kpi4_oim_missed_12m":0
+        }
+    keys=["kpi2_assurance_comparison","kpi3_coverage","kpi4_visit_justification",
+          "kpi4_field_oim_coverage","kpi4_finding_profile","kpi4_oim_consecutive_missed",
+          "kpi4_oim_missed_12m"]
+    return dict(zip(keys,row))
+
+def save_governance(reporting_period,site,g):
+    c=conn()
+    c.execute("""INSERT OR REPLACE INTO kpi_governance
+        (reporting_period,site,kpi2_assurance_comparison,kpi3_coverage,kpi4_visit_justification,
+         kpi4_field_oim_coverage,kpi4_finding_profile,kpi4_oim_consecutive_missed,kpi4_oim_missed_12m)
+         VALUES (?,?,?,?,?,?,?,?,?)""",
+        (reporting_period,site,g["kpi2_assurance_comparison"],g["kpi3_coverage"],
+         g["kpi4_visit_justification"],g["kpi4_field_oim_coverage"],g["kpi4_finding_profile"],
+         int(g["kpi4_oim_consecutive_missed"]),int(g["kpi4_oim_missed_12m"])))
+    c.commit(); c.close()
 
 def kpi5_position(records, report_year, report_month, site_filter="All"):
     period=f"{report_year:04d}-{report_month:02d}"
-    matches=[r for r in records if r["reporting_month"]==period and (site_filter=="All" or r["site"]==site_filter)]
+    matches=[r for r in records if r["reporting_month"]==period and (site_filter=="All" or r["site"] in (site_filter,"All"))]
     if not matches:
-        return {"status":"No data","count":None,"previous":None,"trend":"—","reason":"No KPI 5 value entered for the selected reporting period."}
-
-    # Use the latest value for the selected month/site.
+        return {"status":"No data","count":None,"previous":None,"trend":"—",
+                "reason":"No KPI 5 value entered for the selected reporting period."}
     r=matches[0]
-    current=int(r["rolling_12m_count"])
-    previous=int(r["previous_12m_count"])
-    trigger=r["trigger_level"]
-
-    if current > previous:
-        trend="Increasing"
-    elif current < previous:
-        trend="Decreasing"
-    else:
-        trend="No increase"
-
-    # Perenco KPI 5 uses trend plus event significance. Keep entry minimal by
-    # capturing only the agreed trigger level, not full incident details.
-    if trigger=="Red trigger":
+    current=int(r["rolling_12m_count"] or 0)
+    previous=int(r["previous_12m_count"] or 0)
+    hipo=int(r["hipo_count"] or 0)
+    sig=int(r["significant_injury_count"] or 0)
+    loc=int(r["loc_count"] or 0)
+    major_loc=int(r["major_loc_count"] or 0)
+    repeat_theme=str(r["repeat_event_theme"]).lower()=="yes"
+    recurring=str(r["recurring_permit_failure"]).lower()=="yes"
+    significant_increase=str(r["significant_increase"]).lower()=="yes"
+    trend="Increasing" if current>previous else ("Decreasing" if current<previous else "No increase")
+    if significant_increase or hipo>=2 or sig>=2 or major_loc>=1 or recurring:
         status="Red"
-        reason="Significant/recurring permit-control trigger recorded."
-    elif trigger=="Amber trigger":
+        reasons=[]
+        if significant_increase: reasons.append("significant increase in rolling 12-month trend")
+        if hipo>=2: reasons.append("multiple HiPOs")
+        if sig>=2: reasons.append("multiple significant injuries")
+        if major_loc>=1: reasons.append("major Loss of Containment")
+        if recurring: reasons.append("recurring permit-control failures")
+    elif current>previous or hipo==1 or sig==1 or loc>=1 or repeat_theme:
         status="Amber"
-        reason="Single significant/repeat-event trigger recorded."
-    elif current > previous:
-        status="Amber"
-        reason="Rolling 12-month permit-controlled incident trend is increasing."
+        reasons=[]
+        if current>previous: reasons.append("increasing rolling 12-month trend")
+        if hipo==1: reasons.append("single HiPO")
+        if sig==1: reasons.append("single significant injury")
+        if loc>=1: reasons.append("Loss of Containment")
+        if repeat_theme: reasons.append("repeat event theme")
     else:
         status="Green"
-        reason="No increase in the rolling 12-month permit-controlled incident count and no significance trigger recorded."
-
-    return {"status":status,"count":current,"previous":previous,"trend":trend,"reason":reason,"record":r}
+        reasons=["no increase and no HiPO, significant injury or repeat Loss of Containment trigger"]
+    return {"status":status,"count":current,"previous":previous,"trend":trend,
+            "reason":"; ".join(reasons),"record":r}
 
 def render_kpi5_input():
     st.markdown("""
     <div class="dash-shell">
-      <div class="dash-kicker">Perenco UK · KPI 5</div>
-      <div class="dash-title">Permit-Controlled Incidents</div>
-      <div class="dash-sub">Simple monthly KPI input · rolling 12-month measure</div>
+      <div class="dash-kicker">Perenco UK · KPI 5 · Tier 1</div>
+      <div class="dash-title">Permit-Controlled Activity Incidents</div>
+      <div class="dash-sub">Monthly summary input from MOI reporting · rolling 12-month indicator</div>
     </div>
     """,unsafe_allow_html=True)
-
-    st.info("Enter the monthly KPI 5 result from Perenco's MOI reporting. This does not replace the MOI system.")
-
+    st.info("Enter the monthly summary from Perenco's MOI tracking dataset. This does not replace MOI or duplicate incident records.")
     c1,c2,c3=st.columns(3)
     report_month=c1.date_input("Reporting month",date.today().replace(day=1))
     site=c2.text_input("Site / Asset",value="All")
-    current=c3.number_input("Rolling 12-month permit-controlled incidents",min_value=0,step=1,value=0)
-
-    c1,c2=st.columns(2)
+    current=c3.number_input("Rolling 12-month permit-controlled MOIs",min_value=0,step=1,value=0)
+    c1,c2,c3=st.columns(3)
     previous=c1.number_input("Previous rolling 12-month count",min_value=0,step=1,value=0)
-    trigger=c2.selectbox(
-        "Event significance trigger",
-        ["None","Amber trigger","Red trigger"],
-        help="Use Amber for a single HiPO/significant injury/Loss of Containment/repeat theme. Use Red for multiple serious events, major Loss of Containment or recurring permit-control failure."
-    )
-
+    hipo=c2.number_input("HiPOs",min_value=0,step=1,value=0)
+    sig=c3.number_input("Significant injuries (MTC or above)",min_value=0,step=1,value=0)
+    c1,c2,c3=st.columns(3)
+    loc=c1.number_input("Loss of Containment events",min_value=0,step=1,value=0)
+    major_loc=c2.number_input("Major Loss of Containment events",min_value=0,step=1,value=0)
+    repeat_theme=c3.selectbox("Repeat event theme identified?",["No","Yes"])
+    c1,c2=st.columns(2)
+    recurring=c1.selectbox("Recurring permit-control failures identified?",["No","Yes"])
+    significant_increase=c2.selectbox("Significant increase in rolling 12-month trend?",["No","Yes"],
+        help="Perenco uses 'significant increase' but does not define a numerical threshold. Record the agreed management assessment.")
     comments=st.text_area("Optional KPI comment / source note")
-
     if st.button("Save KPI 5 result",type="primary",use_container_width=True):
         rid=save_kpi5_summary({
-            "reporting_month":report_month.strftime("%Y-%m"),
-            "site":site.strip() or "All",
-            "rolling_12m_count":current,
-            "previous_12m_count":previous,
-            "trigger_level":trigger,
-            "comments":comments
-        })
+            "reporting_month":report_month.strftime("%Y-%m"),"site":site.strip() or "All",
+            "rolling_12m_count":current,"previous_12m_count":previous,"hipo_count":hipo,
+            "significant_injury_count":sig,"loc_count":loc,"major_loc_count":major_loc,
+            "repeat_event_theme":repeat_theme,"recurring_permit_failure":recurring,
+            "significant_increase":significant_increase,"comments":comments})
         st.success(f"Saved KPI 5 result: {rid}")
-
     st.markdown("### Saved KPI 5 results")
     rows=load_kpi5_summary()
     if rows:
         df=pd.DataFrame(rows)
-        show=df[["reporting_month","site","rolling_12m_count","previous_12m_count","trigger_level","comments"]].copy()
-        show.columns=["Reporting month","Site / Asset","Rolling 12m count","Previous 12m count","Trigger","Comment"]
+        show=df[["reporting_month","site","rolling_12m_count","previous_12m_count","hipo_count",
+                 "significant_injury_count","loc_count","major_loc_count","repeat_event_theme",
+                 "recurring_permit_failure","significant_increase","comments"]].copy()
+        show.columns=["Reporting month","Site / Asset","Rolling 12m MOIs","Previous 12m","HiPOs",
+                      "Significant injuries","LOC","Major LOC","Repeat theme","Recurring permit failure",
+                      "Significant increase","Comment"]
         st.dataframe(show,use_container_width=True,hide_index=True)
     else:
         st.info("No KPI 5 results entered yet.")
@@ -473,10 +539,12 @@ def seed_demo_data():
 
     c.execute("DELETE FROM kpi5_summary WHERE demo=1")
     c.execute("""INSERT OR REPLACE INTO kpi5_summary
-        (record_id,submitted_at,reporting_month,site,rolling_12m_count,previous_12m_count,trigger_level,comments,demo)
-        VALUES (?,?,?,?,?,?,?,?,?)""",
-        ("DEMO-KPI5-001",now,audit_date[:7],"All",1,0,"Amber trigger",
-         "Synthetic UAT value only",1))
+        (record_id,submitted_at,reporting_month,site,rolling_12m_count,previous_12m_count,
+         trigger_level,comments,demo,hipo_count,significant_injury_count,loc_count,major_loc_count,
+         repeat_event_theme,recurring_permit_failure,significant_increase)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        ("DEMO-KPI5-001",now,audit_date[:7],"All",1,0,"","Synthetic UAT value only",1,
+         0,0,1,0,"Yes","No","No"))
     c.commit()
     c.close()
 
@@ -561,7 +629,7 @@ def render_dashboard():
         clear_demo_data()
         st.success("Synthetic UAT dataset cleared.")
         st.rerun()
-    st.caption("UAT tools · synthetic DEMO-* records only")
+    st.caption("UAT tools · synthetic DEMO-* records only · KPI logic aligned to Perenco CoW KPI Specification July 2026")
 
     audits=load_audits()
     if not audits:
@@ -629,11 +697,45 @@ def render_dashboard():
                 val=st.selectbox(n,opts,index=opts.index(cur) if cur in opts else 0,key=f"map-l-{i}")
                 if val!=cur: set_role_mapping("lead",n,val); lmap[n]=val
 
+    reporting_period=f"{year:04d}-{month:02d}"
+    gov=get_governance(reporting_period,site)
+    with st.expander("KPI Review Inputs",expanded=False):
+        st.caption("Required KPI criteria not captured directly by the assurance forms.")
+        g1,g2=st.columns(2)
+        with g1:
+            k2_compare=st.selectbox("KPI 2 · Site self-verification vs independent assurance",
+                ["Not assessed","Aligned","Significant difference"],
+                index=["Not assessed","Aligned","Significant difference"].index(gov["kpi2_assurance_comparison"]))
+            k3_cov=st.selectbox("KPI 3 · NUI visitation coverage",
+                ["Not assessed","Reasonable","Over / under coverage"],
+                index=["Not assessed","Reasonable","Over / under coverage"].index(gov["kpi3_coverage"]))
+            k4_just=st.selectbox("KPI 4 · Missed-visit justification",
+                ["Not required","Suitable","Outside planned quarter","Not suitable","Not provided"],
+                index=["Not required","Suitable","Outside planned quarter","Not suitable","Not provided"].index(gov["kpi4_visit_justification"]))
+        with g2:
+            k4_cov=st.selectbox("KPI 4 · Field Hub OIM NUI coverage",
+                ["Not assessed","Reasonable","Limited"],
+                index=["Not assessed","Reasonable","Limited"].index(gov["kpi4_field_oim_coverage"]))
+            k4_find=st.selectbox("KPI 4 · Level 4 finding profile",
+                ["None","Isolated / recurring minor","Significant / repeat"],
+                index=["None","Isolated / recurring minor","Significant / repeat"].index(gov["kpi4_finding_profile"]))
+            q1,q2=st.columns(2)
+            k4_consec=q1.number_input("OIM consecutive missed quarters",0,12,int(gov["kpi4_oim_consecutive_missed"]))
+            k4_12=q2.number_input("OIM missed quarters in rolling 12m",0,12,int(gov["kpi4_oim_missed_12m"]))
+        if st.button("Save KPI review inputs",use_container_width=True):
+            save_governance(reporting_period,site,{
+                "kpi2_assurance_comparison":k2_compare,"kpi3_coverage":k3_cov,
+                "kpi4_visit_justification":k4_just,"kpi4_field_oim_coverage":k4_cov,
+                "kpi4_finding_profile":k4_find,"kpi4_oim_consecutive_missed":k4_consec,
+                "kpi4_oim_missed_12m":k4_12})
+            st.success("KPI review inputs saved.")
+            st.rerun()
+
     # KPI 1
     pmap=get_role_mapping("permit")
     sc=[a for a in permit if pmap.get(a["auditor"])=="Site Controller"]
     asc=[a for a in permit if pmap.get(a["auditor"])=="Asset Superintendent"]
-    wks=max(4,weeks_in_month(year,month))
+    wks=weeks_in_month(year,month)
     site_targets={
         "Dimlington":2,"Cleeton":2,"Ravenspurn North":2,"Northern NUI's":3,"Northern NUIs":3,
         "Bacton":2,"Leman 27BC":2,"Leman 27B":2,"Southern NUI's":3,"Southern NUIs":3
@@ -667,16 +769,14 @@ def render_dashboard():
     k3_question_conf=question_conformance(lead)
     if not lead or k3_conf is None:
         k3_status="Not enough data"
-    elif not quarter_complete:
-        k3_status="In progress"
-    elif k3_conf<70:
+    elif k3_visits<=1 or k3_conf<70:
         k3_status="Red"
-    elif k3_visits>=3 and k3_conf>=90:
+    elif k3_visits>=3 and k3_conf>=90 and gov["kpi3_coverage"]=="Reasonable":
         k3_status="Green"
-    elif k3_visits==2:
+    elif k3_visits==2 or 70<=k3_conf<=89 or gov["kpi3_coverage"]=="Over / under coverage":
         k3_status="Amber"
     else:
-        k3_status="Red"
+        k3_status="Needs review"
 
     # KPI 4 - calculate from valid role-mapped Level 4 records.
     # Unmapped records are flagged separately instead of blocking valid mapped evidence.
@@ -704,20 +804,31 @@ def render_dashboard():
     if not mapping_ready or k4_conf is None:
         k4_status="Not enough data"
     else:
-        weekly_pcts=[]
-        if role_counts["W2W OOE"]>0: weekly_pcts.append(ooep)
-        if role_counts["Medic HSEA"]>0: weekly_pcts.append(medp)
+        justification_red=gov["kpi4_visit_justification"] in ("Not provided","Not suitable")
+        finding_red=gov["kpi4_finding_profile"]=="Significant / repeat"
+        finding_amber=gov["kpi4_finding_profile"]=="Isolated / recurring minor"
+        oim_red=int(gov["kpi4_oim_consecutive_missed"])>=2 or int(gov["kpi4_oim_missed_12m"])>2
+        oim_amber=gov["kpi4_field_oim_coverage"]=="Limited" or gov["kpi4_visit_justification"]=="Outside planned quarter"
 
-        if k4_conf<70 or any(p<50 for p in weekly_pcts):
+        ooe_state="Green" if ooep>=100 else ("Amber" if ooep>=50 else "Red")
+        if medp>=100: medic_state="Green"
+        elif medp>=75: medic_state="Amber"
+        elif medp<50: medic_state="Red"
+        else: medic_state="Needs review"
+        l4_state="Red" if (k4_conf<70 or finding_red) else ("Amber" if (k4_conf<90 or finding_amber) else "Green")
+
+        if justification_red or ooe_state=="Red" or medic_state=="Red" or l4_state=="Red" or oim_red:
             k4_status="Red"
-        elif q_field_oim==0 and quarter_complete and prev_q_field_oim==0:
-            k4_status="Red"
-        elif k4_conf>=90 and weekly_pcts and all(p>=100 for p in weekly_pcts) and q_field_oim>=1:
+        elif medic_state=="Needs review" or gov["kpi4_field_oim_coverage"]=="Not assessed":
+            k4_status="Needs review"
+        elif ooe_state=="Green" and medic_state=="Green" and l4_state=="Green" and q_field_oim>=1 and gov["kpi4_field_oim_coverage"]=="Reasonable":
             k4_status="Green"
-        elif not quarter_complete and k4_conf>=90 and weekly_pcts and all(p>=100 for p in weekly_pcts) and q_field_oim==0:
-            k4_status="In progress"
-        else:
+        elif ooe_state=="Amber" or medic_state=="Amber" or l4_state=="Amber" or oim_amber:
             k4_status="Amber"
+        elif q_field_oim==0:
+            k4_status="In progress" if not quarter_complete else "Needs review"
+        else:
+            k4_status="Needs review"
 
     # KPI 5 - rolling 12-month MOI / permit-controlled incident position.
     kpi5_records=load_kpi5_summary()
@@ -727,11 +838,11 @@ def render_dashboard():
     st.markdown('<div class="dash-section-label">Executive KPI overview</div>',unsafe_allow_html=True)
     cols=st.columns(5)
     with cols[0]:
-        kpi_card("KPI 1 | TIER 3","Site Controller Permit Non-Compliance","—" if k1_pct is None else f"{k1_pct}%",k1_status,
-                 "Role map required." if not sc else f"{len(sc)}/{k1_plan or '—'} planned | {k1_conf if k1_conf is not None else '—'}% audit conformance")
+        kpi_card("KPI 1 | TIER 3","Site Controller Permit Non-Compliance","—" if k1_pct is None else f"{len(sc)} / {k1_plan}",k1_status,
+                 "Role map required." if not sc else f"{k1_pct}% plan complete | {k1_conf if k1_conf is not None else '—'}% audit conformance")
     with cols[1]:
-        kpi_card("KPI 2 | TIER 2","Asset Superintendent Permit Non-Compliance","—" if k2_pct is None else f"{k2_pct}%",k2_status,
-                 "Role map required." if not asc else f"{len(asc)}/{k2_plan} planned | {k2_conf if k2_conf is not None else '—'}% audit conformance")
+        kpi_card("KPI 2 | TIER 2","Asset Superintendent Permit Non-Compliance","—" if k2_pct is None else f"{len(asc)} / {k2_plan}",k2_status,
+                 "Role map required." if not asc else f"{k2_pct}% plan complete | {k2_conf if k2_conf is not None else '—'}% audit conformance")
     with cols[2]:
         kpi_card("KPI 3 | TIER 2","Onshore Leadership NUI Engagement","—" if not lead else f"{k3_visits} of 3",k3_status,
                  "No quarter data." if not lead else f"{k3_conf if k3_conf is not None else '—'}% checklists meeting CoW standard | Q{q} {'complete' if quarter_complete else 'in progress'}")
@@ -763,9 +874,10 @@ def render_dashboard():
     if k1_status in ("Amber","Red"): notes.append(f"KPI 1 is {k1_status}: review Site Controller sampling delivery and permit conformance.")
     if k2_status in ("Amber","Red"): notes.append(f"KPI 2 is {k2_status}: review Asset Superintendent sampling delivery and permit conformance.")
     if k3_status in ("Amber","Red"): notes.append(f"KPI 3 is {k3_status}: review quarterly engagement volume, checklist conformance and NUI coverage.")
-    elif k3_status=="In progress": notes.append(f"KPI 3: Q{q} is in progress — {k3_visits} of 3 engagements completed; {k3_conf if k3_conf is not None else '—'}% of completed checklists currently meet the CoW standard.")
-    if k4_status in ("Amber","Red"): notes.append(f"KPI 4 is {k4_status}: review site leadership visit delivery and Level 4 monitoring conformance.")
-    elif k4_status=="In progress": notes.append(f"KPI 4: reporting period is in progress; weekly visit delivery and conformance are on track, with Field Hub OIM quarter delivery still open.")
+    elif k3_status=="Needs review": notes.append("KPI 3 requires an NUI coverage assessment before Green can be confirmed.")
+    if k4_status in ("Amber","Red"): notes.append(f"KPI 4 is {k4_status}: review role-based visit delivery, justification, NUI coverage and Level 4 monitoring findings.")
+    elif k4_status=="Needs review": notes.append("KPI 4 requires review of criteria not captured automatically by the source forms.")
+    elif k4_status=="In progress": notes.append("KPI 4 Field Hub OIM quarterly target remains open; current monthly visit and monitoring performance is shown separately.")
     if k5["status"] in ("Amber","Red"): notes.append(f"KPI 5 is {k5['status']}: {k5['reason']}.")
     if not notes: notes.append("No intervention statement is generated until sufficient mapped data is available, or all calculated KPIs are Green.")
     st.markdown(f'<div class="dash-note {css}"><b>Overall assurance position: {overall}</b><br>'+"<br>".join(notes)+'</div>',unsafe_allow_html=True)
@@ -782,7 +894,7 @@ def render_dashboard():
             b.metric("Planned audits",k1_plan if k1_plan else "—")
             a.metric("Plan completion",f"{k1_pct}%" if k1_pct is not None else "—")
             b.metric("Audit conformance",f"{k1_conf}%" if k1_conf is not None else "—")
-            st.caption("Status is only calculated once Site Controller audits are role-mapped.")
+            st.caption(f"Perenco: site-specific weekly routine/non-routine sampling. Green ≥100% plan AND ≥90% conformance; Amber 70–90% plan and/or 70–89% conformance; Red <70% plan and/or <70% conformance. Reporting weeks: {wks}.")
 
             st.markdown("### KPI 3 · Onshore Leadership")
             a,b=st.columns(2)
@@ -790,7 +902,7 @@ def render_dashboard():
             b.metric("Checklists meeting CoW standard",f"{k3_conf}%" if k3_conf is not None else "—")
             a.metric("Locations / teams",len(set(x["site"] for x in lead if x["site"])) if lead else "—")
             b.metric("Quarter",f"Q{q} · {'Complete' if quarter_complete else 'In progress'}" if lead else "—")
-            st.caption("Checklist compliance uses the form’s Overall Control of Work Indicator. The KPI remains In progress until the quarter has actually ended; the current checklist result is shown separately for management attention.")
+            st.caption(f"Perenco: Green ≥3 engagements + 90–100% compliance + reasonable coverage; Amber 2 engagements and/or 70–89% compliance and/or over/under coverage; Red ≤1 engagement and/or <70% compliance. Coverage: {gov['kpi3_coverage']}.")
 
         with c2:
             st.markdown("### KPI 2 · Asset Superintendent")
@@ -799,15 +911,15 @@ def render_dashboard():
             b.metric("Planned audits",k2_plan)
             a.metric("Plan completion",f"{k2_pct}%" if k2_pct is not None else "—")
             b.metric("Audit conformance",f"{k2_conf}%" if k2_conf is not None else "—")
-            st.caption("Target: minimum one permit audit per week. Status requires mapped Asset Superintendent audits.")
+            st.caption(f"Perenco: minimum 1 permit audit per week on a rotational basis. Same plan/conformance thresholds as KPI 1. Site self-verification vs independent assurance: {gov['kpi2_assurance_comparison']}.")
 
             st.markdown("### KPI 4 · Site Leadership")
             a,b=st.columns(2)
-            a.metric("W2W OOE",f"{role_counts['W2W OOE']} / {wks}" if mapping_ready else "Not mapped")
-            b.metric("Medic / HSEA",f"{role_counts['Medic HSEA']} / {wks}" if mapping_ready else "Not mapped")
+            a.metric("W2W OOE",f"{role_counts['W2W OOE']} / {wks} ({ooep}%)" if mapping_ready else "Not mapped")
+            b.metric("Medic / HSEA",f"{role_counts['Medic HSEA']} / {wks} ({medp}%)" if mapping_ready else "Not mapped")
             a.metric("Field Hub OIM",f"{q_field_oim} / 1 quarter" if mapping_ready else "Not mapped")
             b.metric("Level 4 audit conformance",f"{k4_conf}%" if (mapping_ready and k4_conf is not None) else "—")
-            st.caption("KPI 4 uses completed Level 4 audits as the compliance basis. Field Hub OIM is assessed against the quarterly target; the two-consecutive-quarter Red rule is applied where history is available.")
+            st.caption(f"Perenco: OOE Green ≥100%, Amber 50–99%, Red <50%; Medic/HSEA Green ≥100%, Amber 75–99%, Red <50% (50–74% is not classified in the source table); Field Hub OIM ≥1/quarter with reasonable coverage; Level 4 Green ≥90%, Amber 70–89%, Red <70%. Justification: {gov['kpi4_visit_justification']}; OIM coverage: {gov['kpi4_field_oim_coverage']}; finding profile: {gov['kpi4_finding_profile']}.")
 
     with tab2:
         findings=[]
@@ -848,10 +960,11 @@ def render_dashboard():
             st.info("No KPI 5 value has been entered for the selected reporting period.")
         else:
             c1,c2,c3,c4=st.columns(4)
-            c1.metric("Rolling 12-month count",k5["count"])
-            c2.metric("Previous 12-month count",k5["previous"])
+            c1.metric("Rolling 12-month MOIs",k5["count"])
+            c2.metric("Previous rolling 12-month",k5["previous"])
             c3.metric("Trend",k5["trend"])
             c4.metric("KPI status",k5["status"])
+            st.caption("Perenco KPI 5: Green = no increase and no serious/repeat trigger; Amber = increasing trend or a single HiPO/significant injury/LOC/repeat theme; Red = significant increase, multiple serious events, major LOC or recurring permit-control failure.")
             st.caption(k5["reason"])
             if k5.get("record",{}).get("comments"):
                 st.markdown(f"**KPI comment:** {k5['record']['comments']}")
