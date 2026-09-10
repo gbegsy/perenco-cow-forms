@@ -15,24 +15,38 @@ ICON=base64.b64encode((BASE/"cow_icon.png").read_bytes()).decode()
 st.set_page_config(page_title="PUK CoW Assurance Forms", page_icon="🔒", layout="wide")
 st.markdown('''
 <style>
-.block-container{max-width:1250px;padding-top:2.25rem;padding-bottom:3rem}
-div[data-testid="stSidebar"]{background:#f4f5f7;border-right:1px solid #dce3e8}
-div[data-testid="stSidebar"] .stRadio > label{font-size:11px;font-weight:800;color:#66788a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
-div[data-testid="stSidebar"] div[role="radiogroup"]{gap:5px}
+.block-container{max-width:1420px;padding-top:2rem;padding-bottom:3.5rem}
+div[data-testid="stSidebar"]{
+    background:linear-gradient(180deg,#f7f9fb 0%,#eef3f6 100%);
+    border-right:1px solid #d6e0e7;
+}
+div[data-testid="stSidebar"] [data-testid="stSidebarContent"]{padding-top:1rem}
+div[data-testid="stSidebar"] .stRadio > label{
+    font-size:10px;font-weight:800;color:#66788a;text-transform:uppercase;
+    letter-spacing:.8px;margin:2px 0 10px 2px
+}
+div[data-testid="stSidebar"] div[role="radiogroup"]{gap:6px}
 div[data-testid="stSidebar"] div[role="radiogroup"] label{
-    background:#ffffff;border:1px solid #d9e1e7;border-radius:7px;padding:8px 10px;
-    min-height:38px;display:flex;align-items:center;transition:.15s ease;
+    background:rgba(255,255,255,.9);
+    border:1px solid #d7e1e8;
+    border-radius:9px;
+    padding:9px 11px;
+    min-height:40px;
+    display:flex;
+    align-items:center;
+    box-shadow:0 1px 2px rgba(22,50,74,.03);
 }
 div[data-testid="stSidebar"] div[role="radiogroup"] label:hover{
-    border-color:#9fb3c2;background:#f9fbfc;
+    border-color:#9eb4c3;background:#fff
 }
 div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked){
-    background:#eaf2f8;border-color:#7ea8c2;box-shadow:inset 3px 0 0 #1679c4;
+    background:#e9f2f8;border-color:#8eb3ca;box-shadow:inset 4px 0 0 #1679c4
 }
 div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) p{
-    font-weight:800;color:#17334a;
+    font-weight:800;color:#16324a
 }
-div[data-testid="stSidebar"] div[role="radiogroup"] input{display:none}
+div[data-testid="stSidebar"] div[role="radiogroup"] input{display:none!important}
+div[data-testid="stSidebar"] div[role="radiogroup"] svg{display:none!important}
 .puk-banner{background:#000;border:1px solid #000;color:#fff;display:grid;grid-template-columns:105px 1fr;align-items:center;margin-bottom:8px;min-height:122px;overflow:hidden;box-sizing:border-box}
 .puk-banner .icon{padding:14px 16px;display:flex;align-items:center;justify-content:flex-start}.puk-banner .icon img{width:66px;height:auto}
 .puk-banner .title{text-align:center;font-weight:800;font-size:22px;line-height:1.35;padding:18px 24px 18px 8px;display:flex;flex-direction:column;justify-content:center;min-height:122px;box-sizing:border-box}
@@ -350,26 +364,69 @@ def clear_demo_data():
 def render_dashboard():
     st.markdown("""
     <style>
-    .dash-title{font-size:30px;font-weight:800;margin:0 0 4px;color:#16324a;letter-spacing:-.3px}
-    .dash-sub{color:#65798c;margin-bottom:14px}
-    .dash-title:before{content:"";display:block;width:46px;height:4px;background:#1679c4;border-radius:4px;margin-bottom:10px}
-    .kpi{background:#fff;border:1px solid #d7e0e8;border-top:4px solid #a9b6c0;border-radius:10px;padding:14px;min-height:165px;box-shadow:0 2px 10px rgba(16,42,67,.05)}
+    .dash-shell{
+        background:linear-gradient(135deg,#102b40 0%,#173f5c 68%,#1d5d82 100%);
+        color:#fff;border-radius:16px;padding:24px 26px 20px;margin-bottom:16px;
+        box-shadow:0 8px 24px rgba(16,43,64,.16);
+    }
+    .dash-kicker{font-size:10px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:#b9d9ec;margin-bottom:7px}
+    .dash-title{font-size:31px;font-weight:800;margin:0 0 5px;color:#fff;letter-spacing:-.4px}
+    .dash-sub{color:#d6e5ef;margin-bottom:0;font-size:13px}
+    .dash-section-label{font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#6f8291;margin:18px 0 8px}
+    .kpi{
+        background:#fff;border:1px solid #d8e2e8;border-top:5px solid #a8b7c2;
+        border-radius:12px;padding:16px 15px;min-height:184px;
+        box-shadow:0 4px 15px rgba(16,42,67,.07);
+        transition:transform .15s ease,box-shadow .15s ease;
+    }
+    .kpi:hover{transform:translateY(-2px);box-shadow:0 7px 20px rgba(16,42,67,.10)}
     .kpi.green{border-top-color:#16865b}.kpi.amber{border-top-color:#b97500}.kpi.red{border-top-color:#c43b3b}
-    .kpi h3{font-size:10px;margin:0;color:#65798c;text-transform:uppercase;letter-spacing:.5px}
-    .kpi .name{font-weight:700;margin:6px 0 2px;color:#17283a}
-    .kpi .num{font-size:27px;font-weight:800;margin:10px 0 6px;color:#17283a}
-    .kpi .detail{font-size:11px;color:#65798c;line-height:1.35;margin-top:7px}
-    .badge{display:inline-block;padding:4px 8px;border-radius:14px;font-size:10px;font-weight:800;background:#edf1f4;color:#62717d}
-    .green .badge{background:#e9f6ef;color:#16865b}.amber .badge{background:#fff4dc;color:#b97500}.red .badge{background:#fdecec;color:#c43b3b}
-    .dash-note{padding:12px 14px;border-radius:8px;background:#edf5fb;border-left:4px solid #1679c4;line-height:1.45}
-    .dash-warn{background:#fff4dc;border-left-color:#b97500}.dash-bad{background:#fdecec;border-left-color:#c43b3b}.dash-good{background:#e9f6ef;border-left-color:#16865b}
+    .kpi h3{font-size:10px;margin:0;color:#6b7f90;text-transform:uppercase;letter-spacing:.7px}
+    .kpi .name{font-weight:800;margin:8px 0 3px;color:#132b3e;font-size:14px;line-height:1.35;min-height:38px}
+    .kpi .num{font-size:31px;font-weight:800;margin:12px 0 7px;color:#10283a;letter-spacing:-.5px}
+    .kpi .detail{font-size:11px;color:#6c7d89;line-height:1.45;margin-top:8px}
+    .badge{
+        display:inline-block;padding:5px 9px;border-radius:999px;font-size:9px;font-weight:800;
+        letter-spacing:.35px;background:#edf1f4;color:#62717d
+    }
+    .green .badge{background:#e8f6ee;color:#16865b}
+    .amber .badge{background:#fff3da;color:#9b6300}
+    .red .badge{background:#fdeaea;color:#ba3535}
+    .dash-note{
+        padding:14px 16px;border-radius:10px;background:#edf5fb;border:1px solid #d5e6f2;
+        border-left:5px solid #1679c4;line-height:1.5;margin:10px 0 4px;
+        box-shadow:0 2px 8px rgba(16,42,67,.04)
+    }
+    .dash-warn{background:#fff7e7;border-color:#f1dfb7;border-left-color:#b97500}
+    .dash-bad{background:#fff0f0;border-color:#f1d1d1;border-left-color:#c43b3b}
+    .dash-good{background:#edf8f2;border-color:#d1eadc;border-left-color:#16865b}
+    div[data-testid="stMetric"]{
+        background:#fff;border:1px solid #e0e7ec;border-radius:10px;padding:12px 14px;
+        box-shadow:0 2px 8px rgba(16,42,67,.04)
+    }
+    div[data-testid="stMetric"] label{font-size:11px;color:#70818e}
+    div[data-testid="stMetricValue"]{font-weight:800;color:#16324a}
+    div[data-baseweb="tab-list"]{
+        gap:5px;border-bottom:1px solid #dfe6eb;margin-top:4px
+    }
+    button[role="tab"]{
+        border-radius:8px 8px 0 0!important;padding:9px 13px!important
+    }
+    button[role="tab"][aria-selected="true"]{
+        background:#eef5fa!important;color:#16324a!important;font-weight:800!important
+    }
     </style>
     """,unsafe_allow_html=True)
-    st.markdown('<div class="dash-title">Control of Work KPI Dashboard</div>',unsafe_allow_html=True)
-    st.markdown('<div class="dash-sub">Control of Work Assurance – KPI Performance & Leadership Oversight</div>',unsafe_allow_html=True)
+    st.markdown("""
+    <div class="dash-shell">
+      <div class="dash-kicker">Perenco UK · Operational Assurance</div>
+      <div class="dash-title">Control of Work KPI Dashboard</div>
+      <div class="dash-sub">KPI performance, assurance coverage and leadership oversight</div>
+    </div>
+    """,unsafe_allow_html=True)
 
-    d1,d2,_=st.columns([1.2,1.2,5])
-    if d1.button("Load UAT demo data",use_container_width=True):
+    d1,d2,_=st.columns([1.1,1.1,6])
+    if d1.button("Load demo data",use_container_width=True):
         seed_demo_data()
         st.success("Synthetic UAT dataset loaded.")
         st.rerun()
@@ -377,7 +434,7 @@ def render_dashboard():
         clear_demo_data()
         st.success("Synthetic UAT dataset cleared.")
         st.rerun()
-    st.caption("Demo records are prefixed DEMO-* and are synthetic. They exist only to test KPI behaviour.")
+    st.caption("UAT tools · synthetic DEMO-* records only")
 
     audits=load_audits()
     if not audits:
@@ -536,6 +593,7 @@ def render_dashboard():
             k4_status="Amber"
 
     # KPI cards
+    st.markdown('<div class="dash-section-label">Executive KPI overview</div>',unsafe_allow_html=True)
     cols=st.columns(5)
     with cols[0]:
         kpi_card("KPI 1 | TIER 3","Site Controller Permit Non-Compliance","—" if k1_pct is None else f"{k1_pct}%",k1_status,
@@ -574,14 +632,15 @@ def render_dashboard():
     if k4_status in ("Amber","Red"): notes.append(f"KPI 4 is {k4_status}: review site leadership visit delivery and Level 4 monitoring conformance.")
     elif k4_status=="In progress": notes.append(f"KPI 4: reporting period is in progress; weekly visit delivery and conformance are on track, with Field Hub OIM quarter delivery still open.")
     if not notes: notes.append("No intervention statement is generated until sufficient mapped data is available, or all calculated KPIs are Green.")
-    st.markdown(f'<div class="dash-note {css}"><b>Overall position: {overall}</b><br>'+"<br>".join(notes)+'</div>',unsafe_allow_html=True)
+    st.markdown(f'<div class="dash-note {css}"><b>Overall assurance position: {overall}</b><br>'+"<br>".join(notes)+'</div>',unsafe_allow_html=True)
 
     # Detail tabs
+    st.markdown('<div class="dash-section-label">Performance detail & evidence</div>',unsafe_allow_html=True)
     tab1,tab2,tab3,tab4=st.tabs(["KPI Detail","Non-Compliances & SMART Actions","Weakest Questions","Audit Trail"])
     with tab1:
         c1,c2=st.columns(2)
         with c1:
-            st.subheader("KPI 1 – Site Controller")
+            st.markdown("### KPI 1 · Site Controller")
             a,b=st.columns(2)
             a.metric("Audits completed",len(sc) if sc else "—")
             b.metric("Planned audits",k1_plan if k1_plan else "—")
@@ -589,7 +648,7 @@ def render_dashboard():
             b.metric("Audit conformance",f"{k1_conf}%" if k1_conf is not None else "—")
             st.caption("Status is only calculated once Site Controller audits are role-mapped.")
 
-            st.subheader("KPI 3 – Onshore Leadership")
+            st.markdown("### KPI 3 · Onshore Leadership")
             a,b=st.columns(2)
             a.metric("Engagements",f"{k3_visits} of 3" if lead else "—")
             b.metric("Checklists meeting CoW standard",f"{k3_conf}%" if k3_conf is not None else "—")
@@ -598,7 +657,7 @@ def render_dashboard():
             st.caption("Checklist compliance uses the form’s Overall Control of Work Indicator. The KPI remains In progress until the quarter has actually ended; the current checklist result is shown separately for management attention.")
 
         with c2:
-            st.subheader("KPI 2 – Asset Superintendent")
+            st.markdown("### KPI 2 · Asset Superintendent")
             a,b=st.columns(2)
             a.metric("Audits completed",len(asc) if asc else "—")
             b.metric("Planned audits",k2_plan)
@@ -606,7 +665,7 @@ def render_dashboard():
             b.metric("Audit conformance",f"{k2_conf}%" if k2_conf is not None else "—")
             st.caption("Target: minimum one permit audit per week. Status requires mapped Asset Superintendent audits.")
 
-            st.subheader("KPI 4 – Site Leadership")
+            st.markdown("### KPI 4 · Site Leadership")
             a,b=st.columns(2)
             a.metric("W2W OOE",f"{role_counts['W2W OOE']} / {wks}" if mapping_ready else "Not mapped")
             b.metric("Medic / HSEA",f"{role_counts['Medic HSEA']} / {wks}" if mapping_ready else "Not mapped")
