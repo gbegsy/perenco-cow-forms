@@ -63,23 +63,15 @@ def conn():
     c=sqlite3.connect(DB)
     c.execute("CREATE TABLE IF NOT EXISTS audits (audit_id TEXT PRIMARY KEY, submitted_at TEXT, form_name TEXT, audit_date TEXT, site TEXT, auditor TEXT, reference TEXT, metadata TEXT, responses TEXT, summary TEXT)")
     c.execute("CREATE TABLE IF NOT EXISTS role_mapping (mapping_type TEXT, person_name TEXT, role_name TEXT, PRIMARY KEY(mapping_type, person_name))")
-    c.execute("""CREATE TABLE IF NOT EXISTS kpi5_incidents (
-        incident_id TEXT PRIMARY KEY,
+    c.execute("""CREATE TABLE IF NOT EXISTS kpi5_summary (
+        record_id TEXT PRIMARY KEY,
         submitted_at TEXT,
-        incident_date TEXT,
+        reporting_month TEXT,
         site TEXT,
-        moi_reference TEXT,
-        title TEXT,
-        permitted_activity TEXT,
-        hipo TEXT,
-        significant_injury TEXT,
-        loss_of_containment TEXT,
-        theme TEXT,
-        repeat_theme TEXT,
-        recurring_permit_failure TEXT,
-        trend_assessment TEXT,
-        learning TEXT,
-        source_link TEXT,
+        rolling_12m_count INTEGER,
+        previous_12m_count INTEGER,
+        trigger_level TEXT,
+        comments TEXT,
         demo INTEGER DEFAULT 0
     )""")
     c.commit(); return c
@@ -257,165 +249,112 @@ def kpi_card(title,name,value,status,detail):
 
 
 
-def save_kpi5_incident(data):
-    iid="MOI-"+datetime.now().strftime("%Y%m%d")+"-"+uuid.uuid4().hex[:6].upper()
-    c=conn()
-    c.execute("""INSERT INTO kpi5_incidents
-        (incident_id,submitted_at,incident_date,site,moi_reference,title,permitted_activity,hipo,
-         significant_injury,loss_of_containment,theme,repeat_theme,recurring_permit_failure,
-         trend_assessment,learning,source_link,demo)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-        (iid,datetime.now().isoformat(timespec="seconds"),data["incident_date"],data["site"],
-         data["moi_reference"],data["title"],data["permitted_activity"],data["hipo"],
-         data["significant_injury"],data["loss_of_containment"],data["theme"],data["repeat_theme"],
-         data["recurring_permit_failure"],data["trend_assessment"],data["learning"],data["source_link"],0))
-    c.commit(); c.close()
-    return iid
 
-def load_kpi5_incidents():
+def save_kpi5_summary(data):
+    rid="KPI5-"+datetime.now().strftime("%Y%m")+"-"+uuid.uuid4().hex[:6].upper()
     c=conn()
-    rows=c.execute("""SELECT incident_id,submitted_at,incident_date,site,moi_reference,title,
-        permitted_activity,hipo,significant_injury,loss_of_containment,theme,repeat_theme,
-        recurring_permit_failure,trend_assessment,learning,source_link,demo
-        FROM kpi5_incidents ORDER BY incident_date DESC, submitted_at DESC""").fetchall()
+    c.execute("""INSERT INTO kpi5_summary
+        (record_id,submitted_at,reporting_month,site,rolling_12m_count,previous_12m_count,
+         trigger_level,comments,demo)
+        VALUES (?,?,?,?,?,?,?,?,?)""",
+        (rid,datetime.now().isoformat(timespec="seconds"),data["reporting_month"],data["site"],
+         int(data["rolling_12m_count"]),int(data["previous_12m_count"]),data["trigger_level"],
+         data["comments"],0))
+    c.commit(); c.close()
+    return rid
+
+def load_kpi5_summary():
+    c=conn()
+    rows=c.execute("""SELECT record_id,submitted_at,reporting_month,site,rolling_12m_count,
+        previous_12m_count,trigger_level,comments,demo
+        FROM kpi5_summary ORDER BY reporting_month DESC, submitted_at DESC""").fetchall()
     c.close()
-    cols=["incident_id","submitted_at","incident_date","site","moi_reference","title","permitted_activity",
-          "hipo","significant_injury","loss_of_containment","theme","repeat_theme",
-          "recurring_permit_failure","trend_assessment","learning","source_link","demo"]
+    cols=["record_id","submitted_at","reporting_month","site","rolling_12m_count",
+          "previous_12m_count","trigger_level","comments","demo"]
     return [dict(zip(cols,r)) for r in rows]
 
 def kpi5_position(records, report_year, report_month, site_filter="All"):
-    # Perenco KPI 5 is a rolling 12-month permitted-activity indicator.
-    end_date=date(report_year,report_month,calendar.monthrange(report_year,report_month)[1])
-    start_month=report_month-11
-    start_year=report_year
-    while start_month<=0:
-        start_month+=12
-        start_year-=1
-    start_date=date(start_year,start_month,1)
+    period=f"{report_year:04d}-{report_month:02d}"
+    matches=[r for r in records if r["reporting_month"]==period and (site_filter=="All" or r["site"]==site_filter)]
+    if not matches:
+        return {"status":"No data","count":None,"previous":None,"trend":"—","reason":"No KPI 5 value entered for the selected reporting period."}
 
-    scoped=[]
-    for r in records:
-        try:
-            d=date.fromisoformat(r["incident_date"])
-        except Exception:
-            continue
-        if not (start_date <= d <= end_date):
-            continue
-        if site_filter!="All" and r["site"]!=site_filter:
-            continue
-        if str(r["permitted_activity"]).lower()!="yes":
-            continue
-        scoped.append(r)
+    # Use the latest value for the selected month/site.
+    r=matches[0]
+    current=int(r["rolling_12m_count"])
+    previous=int(r["previous_12m_count"])
+    trigger=r["trigger_level"]
 
-    if not scoped:
-        return {"status":"No data","count":0,"records":[],"reason":"No permit-controlled MOIs recorded in the rolling 12-month period."}
+    if current > previous:
+        trend="Increasing"
+    elif current < previous:
+        trend="Decreasing"
+    else:
+        trend="No increase"
 
-    hipo=sum(str(r["hipo"]).lower()=="yes" for r in scoped)
-    sig=sum(str(r["significant_injury"]).lower()=="yes" for r in scoped)
-    loc=sum(str(r["loss_of_containment"]).lower() in ("yes","loss of containment","major loss of containment") for r in scoped)
-    major_loc=sum(str(r["loss_of_containment"]).lower()=="major loss of containment" for r in scoped)
-    repeat_theme=any(str(r["repeat_theme"]).lower()=="yes" for r in scoped)
-    recurring=any(str(r["recurring_permit_failure"]).lower()=="yes" for r in scoped)
-    significant_increase=any(str(r["trend_assessment"]).lower()=="significant increase" for r in scoped)
-    increasing=any(str(r["trend_assessment"]).lower()=="increasing" for r in scoped)
-
-    # Apply the document wording directly; trend significance is entered as management judgement
-    # so the dashboard does not invent a numerical "significant increase" threshold.
-    if significant_increase or hipo>1 or sig>1 or major_loc>0 or recurring:
+    # Perenco KPI 5 uses trend plus event significance. Keep entry minimal by
+    # capturing only the agreed trigger level, not full incident details.
+    if trigger=="Red trigger":
         status="Red"
-        reasons=[]
-        if significant_increase: reasons.append("significant increase in rolling 12-month MOIs")
-        if hipo>1: reasons.append("multiple HiPOs")
-        if sig>1: reasons.append("multiple significant injuries")
-        if major_loc>0: reasons.append("major Loss of Containment")
-        if recurring: reasons.append("recurring permit-control failure")
-    elif increasing or hipo==1 or sig==1 or loc>=1 or repeat_theme:
+        reason="Significant/recurring permit-control trigger recorded."
+    elif trigger=="Amber trigger":
         status="Amber"
-        reasons=[]
-        if increasing: reasons.append("increasing rolling 12-month trend")
-        if hipo==1: reasons.append("single HiPO")
-        if sig==1: reasons.append("single significant injury")
-        if loc>=1: reasons.append("Loss of Containment")
-        if repeat_theme: reasons.append("repeat event theme")
+        reason="Single significant/repeat-event trigger recorded."
+    elif current > previous:
+        status="Amber"
+        reason="Rolling 12-month permit-controlled incident trend is increasing."
     else:
         status="Green"
-        reasons=["no increase, HiPO, significant injury or repeat Loss of Containment trigger identified"]
+        reason="No increase in the rolling 12-month permit-controlled incident count and no significance trigger recorded."
 
-    return {"status":status,"count":len(scoped),"records":scoped,"reason":"; ".join(reasons),
-            "hipo":hipo,"significant_injury":sig,"loc":loc,"major_loc":major_loc}
+    return {"status":status,"count":current,"previous":previous,"trend":trend,"reason":reason,"record":r}
 
-def render_kpi5_entry():
+def render_kpi5_input():
     st.markdown("""
     <div class="dash-shell">
-      <div class="dash-kicker">Perenco UK · Lagging Indicator</div>
-      <div class="dash-title">KPI 5 Incident Entry</div>
-      <div class="dash-sub">Permit-controlled activity incidents · rolling 12-month reporting</div>
+      <div class="dash-kicker">Perenco UK · KPI 5</div>
+      <div class="dash-title">Permit-Controlled Incidents</div>
+      <div class="dash-sub">Simple monthly KPI input · rolling 12-month measure</div>
     </div>
     """,unsafe_allow_html=True)
 
-    st.info("Enter MOI information for UAT/manual reporting. Only incidents marked as occurring during a permitted activity feed KPI 5.")
+    st.info("Enter the monthly KPI 5 result from Perenco's MOI reporting. This does not replace the MOI system.")
 
     c1,c2,c3=st.columns(3)
-    incident_date=c1.date_input("Incident date",date.today())
-    site=c2.text_input("Site / Asset")
-    moi_reference=c3.text_input("MOI reference")
+    report_month=c1.date_input("Reporting month",date.today().replace(day=1))
+    site=c2.text_input("Site / Asset",value="All")
+    current=c3.number_input("Rolling 12-month permit-controlled incidents",min_value=0,step=1,value=0)
 
-    title=st.text_input("Incident title / short description")
-
-    c1,c2,c3,c4=st.columns(4)
-    permitted_activity=c1.selectbox("Occurred during permitted activity?",["Select","Yes","No"])
-    hipo=c2.selectbox("HiPO?",["Select","No","Yes"])
-    significant_injury=c3.selectbox("Significant injury (MTC or above)?",["Select","No","Yes"])
-    loss_of_containment=c4.selectbox("Loss of Containment",["Select","No","Loss of Containment","Major Loss of Containment"])
-
-    c1,c2,c3=st.columns(3)
-    theme=c1.text_input("Event / repeat theme")
-    repeat_theme=c2.selectbox("Repeat event theme identified?",["Select","No","Yes"])
-    recurring_permit_failure=c3.selectbox("Recurring permit-control failure?",["Select","No","Yes"])
-
-    trend_assessment=st.selectbox(
-        "Rolling 12-month trend assessment",
-        ["Select","No increase","Increasing","Significant increase"],
-        help="Perenco KPI 5 uses 'increasing' and 'significant increase' but does not define a numerical threshold. Record the agreed management assessment here."
+    c1,c2=st.columns(2)
+    previous=c1.number_input("Previous rolling 12-month count",min_value=0,step=1,value=0)
+    trigger=c2.selectbox(
+        "Event significance trigger",
+        ["None","Amber trigger","Red trigger"],
+        help="Use Amber for a single HiPO/significant injury/Loss of Containment/repeat theme. Use Red for multiple serious events, major Loss of Containment or recurring permit-control failure."
     )
 
-    learning=st.text_area("Learning / management comments")
-    source_link=st.text_input("MOI record link / reference (optional)")
+    comments=st.text_area("Optional KPI comment / source note")
 
-    if st.button("Save KPI 5 incident",type="primary",use_container_width=True):
-        missing=[]
-        if not site: missing.append("Site / Asset")
-        if not moi_reference: missing.append("MOI reference")
-        if not title: missing.append("Incident title")
-        for label,val in [("Permitted activity",permitted_activity),("HiPO",hipo),
-                          ("Significant injury",significant_injury),("Loss of Containment",loss_of_containment),
-                          ("Repeat theme",repeat_theme),("Recurring permit-control failure",recurring_permit_failure),
-                          ("Trend assessment",trend_assessment)]:
-            if val=="Select": missing.append(label)
-        if missing:
-            st.error("Complete: "+", ".join(missing))
-        else:
-            iid=save_kpi5_incident({
-                "incident_date":str(incident_date),"site":site,"moi_reference":moi_reference,"title":title,
-                "permitted_activity":permitted_activity,"hipo":hipo,"significant_injury":significant_injury,
-                "loss_of_containment":loss_of_containment,"theme":theme,"repeat_theme":repeat_theme,
-                "recurring_permit_failure":recurring_permit_failure,"trend_assessment":trend_assessment,
-                "learning":learning,"source_link":source_link
-            })
-            st.success(f"Saved KPI 5 record: {iid}")
+    if st.button("Save KPI 5 result",type="primary",use_container_width=True):
+        rid=save_kpi5_summary({
+            "reporting_month":report_month.strftime("%Y-%m"),
+            "site":site.strip() or "All",
+            "rolling_12m_count":current,
+            "previous_12m_count":previous,
+            "trigger_level":trigger,
+            "comments":comments
+        })
+        st.success(f"Saved KPI 5 result: {rid}")
 
-    st.markdown("### KPI 5 records")
-    rows=load_kpi5_incidents()
+    st.markdown("### Saved KPI 5 results")
+    rows=load_kpi5_summary()
     if rows:
         df=pd.DataFrame(rows)
-        show=df[["incident_id","incident_date","site","moi_reference","title","permitted_activity","hipo",
-                 "significant_injury","loss_of_containment","theme","trend_assessment"]].copy()
-        show.columns=["Incident ID","Date","Site / Asset","MOI Ref","Description","Permitted Activity","HiPO",
-                      "Significant Injury","Loss of Containment","Theme","Trend Assessment"]
+        show=df[["reporting_month","site","rolling_12m_count","previous_12m_count","trigger_level","comments"]].copy()
+        show.columns=["Reporting month","Site / Asset","Rolling 12m count","Previous 12m count","Trigger","Comment"]
         st.dataframe(show,use_container_width=True,hide_index=True)
     else:
-        st.info("No KPI 5 incident records entered yet.")
+        st.info("No KPI 5 results entered yet.")
 
 def seed_demo_data():
     """Insert a complete, clearly-labelled synthetic UAT dataset and KPI role mappings."""
@@ -532,16 +471,12 @@ def seed_demo_data():
         mappings
     )
 
-    c.execute("DELETE FROM kpi5_incidents WHERE demo=1")
-    c.execute("""INSERT OR REPLACE INTO kpi5_incidents
-        (incident_id,submitted_at,incident_date,site,moi_reference,title,permitted_activity,hipo,
-         significant_injury,loss_of_containment,theme,repeat_theme,recurring_permit_failure,
-         trend_assessment,learning,source_link,demo)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-        ("DEMO-MOI-001",now,audit_date,"Dimlington","DEMO-MOI-001",
-         "Synthetic permit-controlled Loss of Containment","Yes","No","No",
-         "Loss of Containment","Permit control","Yes","No","No increase",
-         "Synthetic UAT record only","","1"))
+    c.execute("DELETE FROM kpi5_summary WHERE demo=1")
+    c.execute("""INSERT OR REPLACE INTO kpi5_summary
+        (record_id,submitted_at,reporting_month,site,rolling_12m_count,previous_12m_count,trigger_level,comments,demo)
+        VALUES (?,?,?,?,?,?,?,?,?)""",
+        ("DEMO-KPI5-001",now,audit_date[:7],"All",1,0,"Amber trigger",
+         "Synthetic UAT value only",1))
     c.commit()
     c.close()
 
@@ -549,7 +484,7 @@ def clear_demo_data():
     c=conn()
     c.execute("DELETE FROM audits WHERE audit_id LIKE 'DEMO-%'")
     c.execute("DELETE FROM role_mapping WHERE person_name LIKE 'Demo %'")
-    c.execute("DELETE FROM kpi5_incidents WHERE demo=1 OR incident_id LIKE 'DEMO-%'")
+    c.execute("DELETE FROM kpi5_summary WHERE demo=1 OR record_id LIKE 'DEMO-%'")
     c.commit()
     c.close()
 
@@ -785,7 +720,7 @@ def render_dashboard():
             k4_status="Amber"
 
     # KPI 5 - rolling 12-month MOI / permit-controlled incident position.
-    kpi5_records=load_kpi5_incidents()
+    kpi5_records=load_kpi5_summary()
     k5=kpi5_position(kpi5_records,year,month,site)
 
     # KPI cards
@@ -812,9 +747,10 @@ def render_dashboard():
         kpi_card("KPI 4 | TIER 3","Site Leadership NUI Visits","—" if k4_status=="Not enough data" else f"{k4_conf}%",k4_status,k4_detail)
     with cols[4]:
         if k5["status"]=="No data":
-            kpi_card("KPI 5 | TIER 1","Permit-Controlled Incidents","0","No data","No permit-controlled MOIs recorded in the rolling 12-month period.")
+            kpi_card("KPI 5 | TIER 1","Permit-Controlled Incidents","—","No data","No KPI 5 value entered for the selected reporting period.")
         else:
-            kpi_card("KPI 5 | TIER 1","Permit-Controlled Incidents",str(k5["count"]),k5["status"],k5["reason"])
+            kpi_card("KPI 5 | TIER 1","Permit-Controlled Incidents",str(k5["count"]),k5["status"],
+                     f"Rolling 12m | Previous {k5['previous']} | {k5['trend']}")
 
     # Leadership summary
     statuses=[k1_status,k2_status,k3_status,k4_status,k5["status"]]
@@ -909,27 +845,23 @@ def render_dashboard():
     with tab5:
         st.markdown("### KPI 5 · Permit-Controlled Incidents")
         if k5["status"]=="No data":
-            st.info("No permit-controlled MOIs are recorded in the selected rolling 12-month period.")
+            st.info("No KPI 5 value has been entered for the selected reporting period.")
         else:
             c1,c2,c3,c4=st.columns(4)
-            c1.metric("Rolling 12-month events",k5["count"])
-            c2.metric("HiPOs",k5.get("hipo",0))
-            c3.metric("Significant injuries",k5.get("significant_injury",0))
-            c4.metric("Loss of Containment",k5.get("loc",0))
-            st.markdown(f"**KPI status: {k5['status']}**  \n{k5['reason']}")
-            k5df=pd.DataFrame(k5["records"])
-            view=k5df[["incident_date","site","moi_reference","title","hipo","significant_injury",
-                       "loss_of_containment","theme","trend_assessment"]].copy()
-            view.columns=["Date","Site / Asset","MOI Ref","Description","HiPO","Significant Injury",
-                          "Loss of Containment","Theme","Trend Assessment"]
-            st.dataframe(view,use_container_width=True,hide_index=True)
+            c1.metric("Rolling 12-month count",k5["count"])
+            c2.metric("Previous 12-month count",k5["previous"])
+            c3.metric("Trend",k5["trend"])
+            c4.metric("KPI status",k5["status"])
+            st.caption(k5["reason"])
+            if k5.get("record",{}).get("comments"):
+                st.markdown(f"**KPI comment:** {k5['record']['comments']}")
 
 
-page=st.sidebar.radio("Navigation",["Dashboard","KPI 5 Incident Entry","Permit Quality","Toolbox Talk / Permit / POP","Leadership Engagement","Submitted Audits","Dashboard Export"])
+page=st.sidebar.radio("Navigation",["Dashboard","KPI 5 Data","Permit Quality","Toolbox Talk / Permit / POP","Leadership Engagement","Submitted Audits","Dashboard Export"])
 enable_scroll_to_top()
 
-if page=="KPI 5 Incident Entry":
-    render_kpi5_entry()
+if page=="KPI 5 Data":
+    render_kpi5_input()
 
 elif page=="Permit Quality":
     banner("SELF VERIFICATION - LEVEL 4 MONITORING","Control of Work:  Permit Quality")
