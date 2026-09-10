@@ -1153,8 +1153,8 @@ Rolling 12-month MOI trend. Green: no increase and no serious/repeat trigger. Am
                 site_rows=[]
                 for site_name,rpw,npw in site_groups:
                     sa=[x for x in permit if site_kpi_name(x.get("site"))==site_name]
-                    sr=[x for x in sa if permit_classification(x)=="Routine"]
-                    sn=[x for x in sa if permit_classification(x)=="Non-routine"]
+                    sr=[x for x in sa if permit_sample_type(x)=="Routine"]
+                    sn=[x for x in sa if permit_sample_type(x)=="Non-routine"]
                     rplan=rpw*report_weeks
                     nplan=npw*report_weeks
                     total_plan=rplan+nplan
