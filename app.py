@@ -989,16 +989,98 @@ def render_dashboard():
     elif assessed and all(x=="Green" for x in assessed) and len(assessed)==5: overall="GREEN"; css="dash-good"
     else: overall="PARTIAL DATA"; css=""
     notes=[]
-    if k1_status in ("Amber","Red"): notes.append(f"KPI 1 is {k1_status}: review Site Controller sampling delivery and permit conformance.")
-    if k2_status in ("Amber","Red"): notes.append(f"KPI 2 is {k2_status}: review Asset Superintendent sampling delivery and permit conformance.")
-    if k3_status in ("Amber","Red"): notes.append(f"KPI 3 is {k3_status}: review quarterly engagement volume, checklist conformance and NUI coverage.")
-    elif k3_status=="Needs review": notes.append("KPI 3 requires an NUI coverage assessment before Green can be confirmed.")
-    if k4_status in ("Amber","Red"): notes.append(f"KPI 4 is {k4_status}: review role-based visit delivery, justification, NUI coverage and Level 4 monitoring findings.")
-    elif k4_status=="Needs review": notes.append("KPI 4 requires review of criteria not captured automatically by the source forms.")
-    elif k4_status=="In progress": notes.append("KPI 4 Field Hub OIM quarterly target remains open; current monthly visit and monitoring performance is shown separately.")
-    if k5["status"] in ("Amber","Red"): notes.append(f"KPI 5 is {k5['status']}: {k5['reason']}.")
-    if not notes: notes.append("No intervention statement is generated until sufficient mapped data is available, or all calculated KPIs are Green.")
-    st.markdown(f'<div class="dash-note {css}"><b>Overall assurance position: {overall}</b><br>'+"<br>".join(notes)+'</div>',unsafe_allow_html=True)
+
+    # KPI 1 - explain the actual driver rather than repeating the RAG status.
+    if k1_status in ("Amber","Red"):
+        drivers=[]
+        if k1_plan_pct is not None and k1_plan_pct < 100:
+            drivers.append(f"planned Site Controller sampling delivery is {k1_plan_pct}%")
+        if k1_conf is not None and k1_conf < 90:
+            drivers.append(f"whole-permit conformance is {k1_conf}%")
+        if k1_unclassified:
+            drivers.append(f"{len(k1_unclassified)} permit audit(s) are unclassified")
+        notes.append("KPI 1: " + "; ".join(drivers) + ".")
+
+    # KPI 2 - include delivery, conformance, rotation and assurance comparison where relevant.
+    if k2_status in ("Amber","Red"):
+        drivers=[]
+        if k2_plan_pct is not None and k2_plan_pct < 100:
+            drivers.append(f"Asset Superintendent sampling delivery is {k2_plan_pct}%")
+        if k2_conf is not None and k2_conf < 90:
+            drivers.append(f"whole-permit conformance is {k2_conf}%")
+        if len(k2_coverage) < 9:
+            drivers.append(f"rotational asset coverage is {len(k2_coverage)}/9")
+        if gov.get("kpi2_assurance_comparison") not in ("Not assessed","Insufficient data","Consistent"):
+            drivers.append(f"self-verification / independent assurance comparison: {gov.get('kpi2_assurance_comparison')}")
+        if k2_unclassified:
+            drivers.append(f"{len(k2_unclassified)} permit audit(s) are unclassified")
+        notes.append("KPI 2: " + "; ".join(drivers) + ".")
+
+    # KPI 3 - make clear whether the status is caused by compliance/coverage rather than quarter progress.
+    if k3_status in ("Amber","Red"):
+        drivers=[]
+        if k3_conf is not None and k3_conf < 90:
+            drivers.append(f"leadership checklist compliance is {k3_conf}%")
+        if gov.get("kpi3_coverage") in ("Over-concentrated","Under-covered"):
+            drivers.append(f"NUI coverage is {gov.get('kpi3_coverage').lower()}")
+        if quarter_complete and k3_visits < 3:
+            drivers.append(f"quarterly engagements are {k3_visits}/3")
+        elif not quarter_complete:
+            drivers.append(f"{quarter_label} remains in progress with {k3_visits}/3 engagements recorded")
+        drivers.append(f"{len(k3_nui_teams)}/18 NUI teams engaged")
+        notes.append("KPI 3: " + "; ".join(drivers) + ".")
+    elif k3_status=="Needs review":
+        notes.append("KPI 3: NUI coverage requires management assessment before Green can be confirmed.")
+
+    # KPI 4 - identify the operational cause(s).
+    if k4_status in ("Amber","Red"):
+        drivers=[]
+        if ooe_pct is not None and ooe_pct < 100:
+            drivers.append(f"W2W OOE visit delivery is {ooe_pct}%")
+        if medic_pct is not None and medic_pct < 100:
+            drivers.append(f"Medic/HSEA visit delivery is {medic_pct}%")
+        if k4_conf is not None and k4_conf < 90:
+            drivers.append(f"Level 4 TBT / Compliance Monitoring compliance is {k4_conf}%")
+        if gov.get("kpi4_finding_profile") not in ("None","Not assessed"):
+            drivers.append(f"finding profile: {gov.get('kpi4_finding_profile')}")
+        if gov.get("kpi4_visit_justification") == "Required - not provided":
+            drivers.append("required missed-visit justification has not been provided")
+        notes.append("KPI 4: " + "; ".join(drivers) + ".")
+    elif k4_status=="Needs review":
+        notes.append("KPI 4: management review is required for criteria that the Perenco source table does not assign an automatic RAG status.")
+    elif k4_status=="In progress":
+        notes.append("KPI 4: Field Hub OIM quarterly target remains open; current monthly visit and monitoring performance is shown separately.")
+
+    if k5["status"] in ("Amber","Red"):
+        notes.append(f"KPI 5: {k5['reason']}.")
+
+    if not notes:
+        notes.append("No intervention statement is generated until sufficient mapped data is available, or all five calculated KPIs are Green.")
+
+    # Executive action line: concise synthesis of the non-Green picture.
+    action_parts=[]
+    if k1_status in ("Amber","Red") or k2_status in ("Amber","Red"):
+        action_parts.append("recover planned permit assurance sampling")
+    if (k1_conf is not None and k1_conf < 90) or (k2_conf is not None and k2_conf < 90):
+        action_parts.append("address permit conformance weaknesses")
+    if k3_conf is not None and k3_conf < 90:
+        action_parts.append("review leadership checklist non-conformances")
+    if k4_conf is not None and k4_conf < 90:
+        action_parts.append("review Level 4 TBT / Compliance Monitoring weaknesses")
+    if k5["status"] in ("Amber","Red"):
+        action_parts.append("review the rolling 12-month permit-controlled incident trend")
+
+    action_line = ""
+    if action_parts:
+        action_line = "<br><br><b>Leadership focus:</b> " + "; ".join(action_parts) + "."
+
+    st.markdown(
+        f'<div class="dash-note {css}"><b>Overall assurance position: {overall}</b><br>'
+        + "<br>".join(notes)
+        + action_line
+        + '</div>',
+        unsafe_allow_html=True
+    )
 
     # Detail tabs
     st.markdown('<div class="dash-section-label">Performance detail & evidence</div>',unsafe_allow_html=True)
@@ -1142,7 +1224,7 @@ elif page=="Permit Quality":
         blanks=[r for r in rs if r["response"] is None]
         if not meta["site"] or not meta["auditor"]: st.error("Complete SITE / INSTALLATION and AUDITOR.")
         elif bool(meta.get("new_wcc"))==bool(meta.get("routine")):
-            st.error("For KPI reporting, select either New WCC or Routine so the permit sample is classified as non-routine or routine.")
+            st.error("Select exactly one classification: New WCC (Non-Routine) or Routine. The audit cannot be submitted until it is classified for KPI reporting.")
         elif blanks:
             st.error(f"{len(blanks)} question(s) still require a response. Taking you to the first unanswered question.")
             jump_to(blanks[0]["anchor"])
