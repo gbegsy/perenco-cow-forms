@@ -1150,13 +1150,25 @@ Rolling 12-month MOI trend. Green: no increase and no serious/repeat trigger. Am
                     }
                     return aliases.get(x,str(v or "").strip())
 
+                company_month_audits=[
+                    a for a in audits
+                    if a.get("audit_date")
+                    and datetime.fromisoformat(a["audit_date"]).year==year
+                    and datetime.fromisoformat(a["audit_date"]).month==month
+                ]
+                company_permit=[
+                    a for a in company_month_audits
+                    if "Permit Quality" in a["form_name"]
+                    and pmap.get(a["auditor"])=="Site Controller"
+                ]
+
                 site_rows=[]
                 for site_name,rpw,npw in site_groups:
-                    sa=[x for x in permit if site_kpi_name(x.get("site"))==site_name]
+                    sa=[x for x in company_permit if site_kpi_name(x.get("site"))==site_name]
                     sr=[x for x in sa if permit_sample_type(x)=="Routine"]
-                    sn=[x for x in sa if permit_sample_type(x)=="Non-routine"]
-                    rplan=rpw*report_weeks
-                    nplan=npw*report_weeks
+                    sn=[x for x in sa if permit_sample_type(x)=="Non-Routine"]
+                    rplan=rpw*wks
+                    nplan=npw*wks
                     total_plan=rplan+nplan
                     pp=round(100*len(sa)/total_plan) if total_plan else None
                     cf=audit_conformance(sa)
