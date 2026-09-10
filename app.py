@@ -16,7 +16,23 @@ st.set_page_config(page_title="PUK CoW Assurance Forms", page_icon="🔒", layou
 st.markdown('''
 <style>
 .block-container{max-width:1250px;padding-top:2.25rem;padding-bottom:3rem}
-div[data-testid="stSidebar"]{background:#f4f5f7}
+div[data-testid="stSidebar"]{background:#f4f5f7;border-right:1px solid #dce3e8}
+div[data-testid="stSidebar"] .stRadio > label{font-size:11px;font-weight:800;color:#66788a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+div[data-testid="stSidebar"] div[role="radiogroup"]{gap:5px}
+div[data-testid="stSidebar"] div[role="radiogroup"] label{
+    background:#ffffff;border:1px solid #d9e1e7;border-radius:7px;padding:8px 10px;
+    min-height:38px;display:flex;align-items:center;transition:.15s ease;
+}
+div[data-testid="stSidebar"] div[role="radiogroup"] label:hover{
+    border-color:#9fb3c2;background:#f9fbfc;
+}
+div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked){
+    background:#eaf2f8;border-color:#7ea8c2;box-shadow:inset 3px 0 0 #1679c4;
+}
+div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) p{
+    font-weight:800;color:#17334a;
+}
+div[data-testid="stSidebar"] div[role="radiogroup"] input{display:none}
 .puk-banner{background:#000;border:1px solid #000;color:#fff;display:grid;grid-template-columns:105px 1fr;align-items:center;margin-bottom:8px;min-height:122px;overflow:hidden;box-sizing:border-box}
 .puk-banner .icon{padding:14px 16px;display:flex;align-items:center;justify-content:flex-start}.puk-banner .icon img{width:66px;height:auto}
 .puk-banner .title{text-align:center;font-weight:800;font-size:22px;line-height:1.35;padding:18px 24px 18px 8px;display:flex;flex-direction:column;justify-content:center;min-height:122px;box-sizing:border-box}
@@ -67,6 +83,46 @@ def jump_to(anchor):
     const el = parent.document.getElementById('{anchor}');
     if (el) {{ el.scrollIntoView({{behavior:'smooth', block:'center'}}); }}
     </script>""", height=0)
+
+
+def enable_scroll_to_top():
+    components.html("""
+    <script>
+    const doc = parent.document;
+
+    function goTop() {
+        try {
+            parent.window.scrollTo({top:0, left:0, behavior:'smooth'});
+            const main = doc.querySelector('section.main');
+            if (main) main.scrollTo({top:0, left:0, behavior:'smooth'});
+            const app = doc.querySelector('[data-testid="stAppViewContainer"]');
+            if (app) app.scrollTo({top:0, left:0, behavior:'smooth'});
+        } catch(e) {}
+    }
+
+    function bind() {
+        // Dashboard tabs
+        doc.querySelectorAll('button[role="tab"]').forEach(el => {
+            if (!el.dataset.pukTopBound) {
+                el.dataset.pukTopBound = "1";
+                el.addEventListener('click', () => setTimeout(goTop, 60));
+            }
+        });
+
+        // Sidebar page navigation
+        doc.querySelectorAll('[data-testid="stSidebar"] div[role="radiogroup"] label').forEach(el => {
+            if (!el.dataset.pukTopBound) {
+                el.dataset.pukTopBound = "1";
+                el.addEventListener('click', () => setTimeout(goTop, 120));
+            }
+        });
+    }
+
+    bind();
+    const observer = new MutationObserver(bind);
+    observer.observe(doc.body, {childList:true, subtree:true});
+    </script>
+    """, height=0)
 
 def header_ptw():
     c1,c2,c3,c4=st.columns([1.5,1.2,1.2,1])
@@ -294,8 +350,9 @@ def clear_demo_data():
 def render_dashboard():
     st.markdown("""
     <style>
-    .dash-title{font-size:30px;font-weight:800;margin:0 0 4px;color:#16324a}
-    .dash-sub{color:#65798c;margin-bottom:16px}
+    .dash-title{font-size:30px;font-weight:800;margin:0 0 4px;color:#16324a;letter-spacing:-.3px}
+    .dash-sub{color:#65798c;margin-bottom:14px}
+    .dash-title:before{content:"";display:block;width:46px;height:4px;background:#1679c4;border-radius:4px;margin-bottom:10px}
     .kpi{background:#fff;border:1px solid #d7e0e8;border-top:4px solid #a9b6c0;border-radius:10px;padding:14px;min-height:165px;box-shadow:0 2px 10px rgba(16,42,67,.05)}
     .kpi.green{border-top-color:#16865b}.kpi.amber{border-top-color:#b97500}.kpi.red{border-top-color:#c43b3b}
     .kpi h3{font-size:10px;margin:0;color:#65798c;text-transform:uppercase;letter-spacing:.5px}
@@ -495,7 +552,7 @@ def render_dashboard():
         elif not mapping_ready:
             k4_detail="No valid KPI 4 role-mapped audits yet."
         else:
-            k4_detail=f"OOE {role_counts['W2W OOE']}/{wks}; Medic/HSEA {role_counts['Medic HSEA']}/{wks}; Field OIM {q_field_oim}/1 this quarter"
+            k4_detail=f"Visits: OOE {role_counts['W2W OOE']}/{wks} · Medic/HSEA {role_counts['Medic HSEA']}/{wks} · Field OIM {q_field_oim}/1"
             if tbt_unmapped:
                 k4_detail += f" | {len(tbt_unmapped)} unmapped audit(s) excluded"
         kpi_card("KPI 4 | TIER 3","Site Leadership NUI Visits","—" if k4_status=="Not enough data" else f"{k4_conf}%",k4_status,k4_detail)
@@ -591,7 +648,8 @@ def render_dashboard():
         else: st.info("No audits in this view.")
 
 
-page=st.sidebar.radio("Select form",["Permit Quality","Toolbox Talk / Permit / POP","Leadership Engagement","Dashboard","Submitted Audits","Dashboard Export"])
+page=st.sidebar.radio("Navigation",["Dashboard","Permit Quality","Toolbox Talk / Permit / POP","Leadership Engagement","Submitted Audits","Dashboard Export"])
+enable_scroll_to_top()
 
 if page=="Permit Quality":
     banner("SELF VERIFICATION - LEVEL 4 MONITORING","Control of Work:  Permit Quality")
