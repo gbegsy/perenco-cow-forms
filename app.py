@@ -949,10 +949,10 @@ def render_dashboard():
     st.markdown('<div class="dash-section-label">Executive KPI overview</div>',unsafe_allow_html=True)
     cols=st.columns(5)
     with cols[0]:
-        kpi_card("KPI 1 | TIER 3","Site Controller Permit Non-Compliance","—" if k1_pct is None else f"{len(sc)} / {k1_plan}",k1_status,
+        kpi_card("KPI 1 | TIER 3","Site Controller Permit Non-Compliance","—" if k1_pct is None else f"{len(sc)} of {k1_plan} planned",k1_status,
                  "Role map required." if not sc else f"Routine {len(k1_routine)}/{k1_routine_plan} · Non-routine {len(k1_nonroutine)}/{k1_nonroutine_plan} | {k1_conf if k1_conf is not None else '—'}% audit conformance")
     with cols[1]:
-        kpi_card("KPI 2 | TIER 2","Asset Superintendent Permit Non-Compliance","—" if k2_pct is None else f"{len(asc)} / {k2_plan}",k2_status,
+        kpi_card("KPI 2 | TIER 2","Asset Superintendent Permit Non-Compliance","—" if k2_pct is None else f"{len(asc)} of {k2_plan} planned",k2_status,
                  "Role map required." if not asc else f"Routine {len(k2_routine)} · Non-routine {len(k2_nonroutine)} | {len(k2_coverage)}/9 asset groups sampled")
     with cols[2]:
         kpi_card("KPI 3 | TIER 2","Onshore Leadership NUI Engagement","—" if not lead else f"{k3_visits} of 3",k3_status,
@@ -1109,8 +1109,8 @@ Rolling 12-month MOI trend. Green: no increase and no serious/repeat trigger. Am
             a,b=st.columns(2)
             a.metric("Audits completed",len(sc) if sc else "—")
             b.metric("Required audits for selected period",k1_plan if k1_plan else "—")
-            a.metric("Routine",f"{len(k1_routine)} / {k1_routine_plan}" if k1_routine_plan is not None else "—")
-            b.metric("Non-routine",f"{len(k1_nonroutine)} / {k1_nonroutine_plan}" if k1_nonroutine_plan is not None else "—")
+            a.metric("Routine audits",f"{len(k1_routine)} of {k1_routine_plan} planned" if k1_routine_plan is not None else "—")
+            b.metric("Non-routine audits",f"{len(k1_nonroutine)} of {k1_nonroutine_plan} planned" if k1_nonroutine_plan is not None else "—")
             a.metric("Plan completion",f"{k1_pct}%" if k1_pct is not None else "—")
             b.metric("Whole-permit conformance",f"{k1_conf}%" if k1_conf is not None else "—")
             if k1_unclassified:
@@ -1134,8 +1134,8 @@ Rolling 12-month MOI trend. Green: no increase and no serious/repeat trigger. Am
             a,b=st.columns(2)
             a.metric("Audits completed",len(asc) if asc else "—")
             b.metric("Required audits for selected period",k2_plan)
-            a.metric("Routine",len(k2_routine) if asc else "—")
-            b.metric("Non-routine",len(k2_nonroutine) if asc else "—")
+            a.metric("Routine samples",len(k2_routine) if asc else "—")
+            b.metric("Non-routine samples",len(k2_nonroutine) if asc else "—")
             a.metric("Plan completion",f"{k2_pct}%" if k2_pct is not None else "—")
             b.metric("Whole-permit conformance",f"{k2_conf}%" if k2_conf is not None else "—")
             a.metric("Rotational asset coverage",f"{len(k2_coverage)} / 9")
@@ -1152,8 +1152,11 @@ Rolling 12-month MOI trend. Green: no increase and no serious/repeat trigger. Am
             b.metric("Medic / HSEA",f"{role_counts['Medic HSEA']} / {wks} ({medp}%)" if mapping_ready else "Not mapped")
             a.metric("Field Hub OIM",f"{q_field_oim} / 1 quarter" if mapping_ready else "Not mapped")
             b.metric("Level 4 TBT / Compliance Monitoring",f"{k4_conf}%" if (mapping_ready and k4_conf is not None) else "—")
-            a.metric("Routine / Non-routine",f"{k4_routine} / {k4_nonroutine}" if mapping_ready else "—")
-            b.metric("POP samples",k4_pop if mapping_ready else "—")
+            s1,s2,s3=st.columns(3)
+            s1.metric("Routine samples",k4_routine if mapping_ready else "—")
+            s2.metric("Non-routine samples",k4_nonroutine if mapping_ready else "—")
+            s3.metric("POP samples",k4_pop if mapping_ready else "—")
+            a,b=st.columns(2)
             a.metric("Missed-visit justification",gov["kpi4_visit_justification"])
             b.metric("Field Hub OIM coverage",gov["kpi4_field_oim_coverage"])
             st.caption(f"Finding profile: {gov['kpi4_finding_profile']}. OIM missed-quarter history: {gov['kpi4_oim_consecutive_missed']} consecutive; {gov['kpi4_oim_missed_12m']} in rolling 12 months. The Medic/HSEA 50–74% band remains 'Needs review' because the source table does not assign a RAG status to that range.")
