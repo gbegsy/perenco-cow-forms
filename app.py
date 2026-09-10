@@ -993,8 +993,8 @@ def render_dashboard():
     # KPI 1 - explain the actual driver rather than repeating the RAG status.
     if k1_status in ("Amber","Red"):
         drivers=[]
-        if k1_plan_pct is not None and k1_plan_pct < 100:
-            drivers.append(f"planned Site Controller sampling delivery is {k1_plan_pct}%")
+        if k1_pct is not None and k1_pct < 100:
+            drivers.append(f"planned Site Controller sampling delivery is {k1_pct}%")
         if k1_conf is not None and k1_conf < 90:
             drivers.append(f"whole-permit conformance is {k1_conf}%")
         if k1_unclassified:
@@ -1004,8 +1004,8 @@ def render_dashboard():
     # KPI 2 - include delivery, conformance, rotation and assurance comparison where relevant.
     if k2_status in ("Amber","Red"):
         drivers=[]
-        if k2_plan_pct is not None and k2_plan_pct < 100:
-            drivers.append(f"Asset Superintendent sampling delivery is {k2_plan_pct}%")
+        if k2_pct is not None and k2_pct < 100:
+            drivers.append(f"Asset Superintendent sampling delivery is {k2_pct}%")
         if k2_conf is not None and k2_conf < 90:
             drivers.append(f"whole-permit conformance is {k2_conf}%")
         if len(k2_coverage) < 9:
@@ -1027,7 +1027,7 @@ def render_dashboard():
             drivers.append(f"quarterly engagements are {k3_visits}/3")
         elif not quarter_complete:
             drivers.append(f"{quarter_label} remains in progress with {k3_visits}/3 engagements recorded")
-        drivers.append(f"{len(k3_nui_teams)}/18 NUI teams engaged")
+        drivers.append(f"{len(k3_teams)}/18 NUI teams engaged")
         notes.append("KPI 3: " + "; ".join(drivers) + ".")
     elif k3_status=="Needs review":
         notes.append("KPI 3: NUI coverage requires management assessment before Green can be confirmed.")
@@ -1035,10 +1035,10 @@ def render_dashboard():
     # KPI 4 - identify the operational cause(s).
     if k4_status in ("Amber","Red"):
         drivers=[]
-        if ooe_pct is not None and ooe_pct < 100:
-            drivers.append(f"W2W OOE visit delivery is {ooe_pct}%")
-        if medic_pct is not None and medic_pct < 100:
-            drivers.append(f"Medic/HSEA visit delivery is {medic_pct}%")
+        if ooep is not None and ooep < 100:
+            drivers.append(f"W2W OOE visit delivery is {ooep}%")
+        if medp is not None and medp < 100:
+            drivers.append(f"Medic/HSEA visit delivery is {medp}%")
         if k4_conf is not None and k4_conf < 90:
             drivers.append(f"Level 4 TBT / Compliance Monitoring compliance is {k4_conf}%")
         if gov.get("kpi4_finding_profile") not in ("None","Not assessed"):
