@@ -378,7 +378,7 @@ def render_kpi5_input():
     st.markdown("""
     <div class="dash-shell">
       <div class="dash-kicker">Perenco UK · KPI 5 · Tier 1</div>
-      <div class="dash-title">Permit-Controlled Activity Incidents</div>
+      <div class="dash-title">Increased Incidents During Permit Controlled Activity</div>
       <div class="dash-sub">Monthly summary input from MOI reporting · rolling 12-month indicator</div>
     </div>
     """,unsafe_allow_html=True)
@@ -866,9 +866,9 @@ def render_dashboard():
         kpi_card("KPI 4 | TIER 3","Site Leadership NUI Visits",k4_headline,k4_status,k4_detail)
     with cols[4]:
         if k5["status"]=="No data":
-            kpi_card("KPI 5 | TIER 1","Permit-Controlled Incidents","—","No data","No KPI 5 value entered for the selected reporting period.")
+            kpi_card("KPI 5 | TIER 1","Increased Incidents During Permit Controlled Activity","—","No data","No KPI 5 value entered for the selected reporting period.")
         else:
-            kpi_card("KPI 5 | TIER 1","Permit-Controlled Incidents",str(k5["count"]),k5["status"],
+            kpi_card("KPI 5 | TIER 1","Increased Incidents During Permit Controlled Activity",str(k5["count"]),k5["status"],
                      f"Rolling 12m | Previous {k5['previous']} | {k5['trend']}")
 
     # Leadership summary
@@ -908,7 +908,7 @@ Minimum 3 NUI engagements per quarter. Green also requires 90–100% checklist c
 **KPI 4 – Site Leadership (Tier 3)**  
 W2W OOE: minimum 1/week. Medic/HSEA: minimum 1/week. Field Hub OIM: minimum 1/quarter. Level 4 monitoring: Green ≥90%, Amber 70–89%, Red <70%. Missed-visit justification, NUI coverage, repeat/significant findings and Field Hub OIM missed-quarter rules also affect status.
 
-**KPI 5 – Permit-Controlled Incidents (Tier 1)**  
+**KPI 5 – Increased Incidents During Permit Controlled Activity (Tier 1)**  
 Rolling 12-month MOI trend. Green: no increase and no serious/repeat trigger. Amber: increasing trend or a single HiPO, significant injury, Loss of Containment or repeat event theme. Red: significant increase, multiple serious events, major Loss of Containment or recurring permit-control failure.
 """)
         c1,c2=st.columns(2)
@@ -982,7 +982,7 @@ Rolling 12-month MOI trend. Green: no increase and no serious/repeat trigger. Am
         else: st.info("No audits in this view.")
 
     with tab5:
-        st.markdown("### KPI 5 · Permit-Controlled Incidents")
+        st.markdown("### KPI 5 · Increased Incidents During Permit Controlled Activity")
         if k5["status"]=="No data":
             st.info("No KPI 5 value has been entered for the selected reporting period.")
         else:
