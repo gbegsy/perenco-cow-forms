@@ -620,16 +620,17 @@ def render_dashboard():
     </div>
     """,unsafe_allow_html=True)
 
-    d1,d2,_=st.columns([1.1,1.1,6])
-    if d1.button("Load demo data",use_container_width=True):
-        seed_demo_data()
-        st.success("Synthetic UAT dataset loaded.")
-        st.rerun()
-    if d2.button("Clear demo data",use_container_width=True):
-        clear_demo_data()
-        st.success("Synthetic UAT dataset cleared.")
-        st.rerun()
-    st.caption("UAT mode · synthetic DEMO-* records only · KPI logic aligned to Perenco CoW KPI Specification July 2026")
+    with st.expander("UAT / Demo controls", expanded=False):
+        d1,d2,_=st.columns([1.1,1.1,6])
+        if d1.button("Load demo data",use_container_width=True):
+            seed_demo_data()
+            st.success("Synthetic UAT dataset loaded.")
+            st.rerun()
+        if d2.button("Clear demo data",use_container_width=True):
+            clear_demo_data()
+            st.success("Synthetic UAT dataset cleared.")
+            st.rerun()
+        st.caption("Synthetic DEMO-* records only · KPI logic aligned to Perenco CoW KPI Specification July 2026")
 
     audits=load_audits()
     if not audits:
@@ -855,7 +856,14 @@ def render_dashboard():
             k4_detail=f"OOE {role_counts['W2W OOE']}/{wks} · Medic/HSEA {role_counts['Medic HSEA']}/{wks} · Field OIM {q_field_oim}/1"
             if tbt_unmapped:
                 k4_detail += f" | {len(tbt_unmapped)} unmapped audit(s) excluded"
-        kpi_card("KPI 4 | TIER 3","Site Leadership NUI Visits","—" if k4_status=="Not enough data" else f"{k4_conf}%",k4_status,k4_detail)
+        if k4_status=="Not enough data":
+            k4_headline="—"
+        else:
+            k4_headline=f"{role_counts['W2W OOE']}/{wks} · {role_counts['Medic HSEA']}/{wks} · {q_field_oim}/1"
+            k4_detail=f"OOE · Medic/HSEA · Field OIM | Level 4 conformance {k4_conf}%"
+            if tbt_unmapped:
+                k4_detail += f" | {len(tbt_unmapped)} unmapped audit(s) excluded"
+        kpi_card("KPI 4 | TIER 3","Site Leadership NUI Visits",k4_headline,k4_status,k4_detail)
     with cols[4]:
         if k5["status"]=="No data":
             kpi_card("KPI 5 | TIER 1","Permit-Controlled Incidents","—","No data","No KPI 5 value entered for the selected reporting period.")
