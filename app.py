@@ -168,106 +168,105 @@ def kpi_card(title,name,value,status,detail):
 
 
 def seed_demo_data():
-    """Insert clearly-labelled synthetic UAT data and role mappings."""
+    """Insert a complete, clearly-labelled synthetic UAT dataset and KPI role mappings."""
     c=conn()
 
-    demo_ids=[
-        "DEMO-PQ-SC-001","DEMO-PQ-AS-001",
-        "DEMO-TBT-OOE-001","DEMO-TBT-HSEA-001",
-        "DEMO-LEAD-001"
-    ]
-    for aid in demo_ids:
-        c.execute("DELETE FROM audits WHERE audit_id=?",(aid,))
+    # Remove any prior demo records so repeated testing stays tidy.
+    c.execute("DELETE FROM audits WHERE audit_id LIKE 'DEMO-%'")
+    c.execute("DELETE FROM role_mapping WHERE person_name LIKE 'Demo %'")
 
     today=date.today()
     audit_date=str(today)
+    now=datetime.now().isoformat(timespec="seconds")
 
-    demo_records=[
-        (
-            "DEMO-PQ-SC-001",
-            datetime.now().isoformat(timespec="seconds"),
-            "Control of Work: Permit Quality",
-            audit_date,
-            "Dimlington",
-            "Demo Site Controller",
-            "DEMO-WCC-001",
-            json.dumps({"site":"Dimlington","audit_date":audit_date,"auditor":"Demo Site Controller","reference":"DEMO-WCC-001","demo":True}),
-            json.dumps([
-                {"section":"1. Planning","item":"a","question":"Is the activity planned to be undertaken outside the next 24 hours?","response":"Yes","smart_action":""},
-                {"section":"1. Planning","item":"b","question":"Has the WCC been discussed in the daily permit meeting?","response":"Yes","smart_action":""},
-                {"section":"2. Raising a NEW WCC","item":"a","question":"Is there a brief, clear and concise summary of scope?","response":"No","smart_action":"Review WCC scope description and update before issue."},
-                {"section":"2. Raising a NEW WCC","item":"b","question":"Is the work location, tools and equipment described clearly and specific?","response":"Yes","smart_action":""}
-            ]),
-            ""
-        ),
-        (
-            "DEMO-PQ-AS-001",
-            datetime.now().isoformat(timespec="seconds"),
-            "Control of Work: Permit Quality",
-            audit_date,
-            "Ravenspurn North",
-            "Demo Asset Superintendent",
-            "DEMO-WCC-002",
-            json.dumps({"site":"Ravenspurn North","audit_date":audit_date,"auditor":"Demo Asset Superintendent","reference":"DEMO-WCC-002","demo":True}),
-            json.dumps([
-                {"section":"1. Planning","item":"a","question":"Is the activity planned to be undertaken outside the next 24 hours?","response":"Yes","smart_action":""},
-                {"section":"1. Planning","item":"b","question":"Has the WCC been discussed in the daily permit meeting?","response":"Yes","smart_action":""},
-                {"section":"4. Identifying the Correct WCC","item":"a","question":"Has the correct Type of WCC been selected appropriate for the task?","response":"Yes","smart_action":""}
-            ]),
-            ""
-        ),
-        (
-            "DEMO-TBT-OOE-001",
-            datetime.now().isoformat(timespec="seconds"),
-            "Control of Work: Toolbox Talk, Permit Compliance & Operating Procedures",
-            audit_date,
-            "Northern W2W",
-            "Demo W2W OOE",
-            "DEMO-TBT-001",
-            json.dumps({"site":"Northern W2W","audit_date":audit_date,"auditor":"Demo W2W OOE","reference":"DEMO-TBT-001","demo":True}),
-            json.dumps([
-                {"section":"1. TBT Hazard Identification","item":"a","question":"TBT Lead discusses the hazards and controls associated to the task/activity","response":"Yes","smart_action":""},
-                {"section":"1. TBT Hazard Identification","item":"b","question":"SIMOP activities that may conflict with the activity / task?","response":"Yes","smart_action":""},
-                {"section":"4. Permit Compliance","item":"a","question":"Is there an up-to-date copy of the WCC at the worksite and signed by all members of the work party?","response":"No","smart_action":"Confirm current WCC at worksite and obtain missing signatures."}
-            ]),
-            ""
-        ),
-        (
-            "DEMO-TBT-HSEA-001",
-            datetime.now().isoformat(timespec="seconds"),
-            "Control of Work: Toolbox Talk, Permit Compliance & Operating Procedures",
-            audit_date,
-            "Southern W2W",
-            "Demo Medic HSEA",
-            "DEMO-TBT-002",
-            json.dumps({"site":"Southern W2W","audit_date":audit_date,"auditor":"Demo Medic HSEA","reference":"DEMO-TBT-002","demo":True}),
-            json.dumps([
-                {"section":"1. TBT Hazard Identification","item":"a","question":"TBT Lead discusses the hazards and controls associated to the task/activity","response":"Yes","smart_action":""},
-                {"section":"3. Hazards associated to the Worksite and Equipment","item":"c","question":"Are all access and egress points checked and clear?","response":"Yes","smart_action":""}
-            ]),
-            ""
-        ),
-        (
-            "DEMO-LEAD-001",
-            datetime.now().isoformat(timespec="seconds"),
-            "Control of Work Leadership Engagement Checklist",
-            audit_date,
-            "Northern W2W",
-            "Demo Operations Director",
-            "",
-            json.dumps({"site":"Northern W2W","audit_date":audit_date,"auditor":"Demo Operations Director","overall_indicator":"Meets CoW Standard","demo":True}),
-            json.dumps([
-                {"section":"Permit to Work (PTW)","question":"Are personnel able to explain the work they are undertaking?","response":"Yes","comments_evidence":"Clear understanding demonstrated."},
-                {"section":"Hazard Identification & Risk Assessment","question":"Can personnel explain the key hazards associated with the task?","response":"Yes","comments_evidence":"Key hazards understood."},
-                {"section":"Stop the Job Culture","question":"Do personnel understand their authority to stop the job?","response":"Yes","comments_evidence":"Stop-work authority understood."}
-            ]),
-            "Meets CoW Standard"
+    def rec(aid, form_name, site, auditor, reference, responses, summary="", meta_extra=None):
+        meta={"site":site,"audit_date":audit_date,"auditor":auditor,"reference":reference,"demo":True}
+        if meta_extra: meta.update(meta_extra)
+        return (
+            aid, now, form_name, audit_date, site, auditor, reference,
+            json.dumps(meta,ensure_ascii=False),
+            json.dumps(responses,ensure_ascii=False),
+            summary
         )
-    ]
+
+    records=[]
+
+    # KPI 1 - Site Controller Permit Quality
+    records.append(rec(
+        "DEMO-PQ-SC-001","Control of Work: Permit Quality","Dimlington","Demo Site Controller","DEMO-WCC-SC-001",
+        [
+            {"section":"1. Planning","item":"a","question":"Is the activity planned to be undertaken outside the next 24 hours?","response":"Yes","smart_action":""},
+            {"section":"1. Planning","item":"b","question":"Has the WCC been discussed in the daily permit meeting?","response":"Yes","smart_action":""},
+            {"section":"2. Raising a NEW WCC","item":"a","question":"Is there a brief, clear and concise summary of scope?","response":"No","smart_action":"Improve the WCC scope description and verify it before issue."},
+        ]
+    ))
+    records.append(rec(
+        "DEMO-PQ-SC-002","Control of Work: Permit Quality","Dimlington","Demo Site Controller","DEMO-WCC-SC-002",
+        [
+            {"section":"1. Planning","item":"a","question":"Is the activity planned to be undertaken outside the next 24 hours?","response":"Yes","smart_action":""},
+            {"section":"1. Planning","item":"b","question":"Has the WCC been discussed in the daily permit meeting?","response":"Yes","smart_action":""},
+            {"section":"2. Raising a NEW WCC","item":"a","question":"Is there a brief, clear and concise summary of scope?","response":"Yes","smart_action":""},
+        ]
+    ))
+
+    # KPI 2 - Asset Superintendent Permit Quality
+    records.append(rec(
+        "DEMO-PQ-AS-001","Control of Work: Permit Quality","Ravenspurn North","Demo Asset Superintendent","DEMO-WCC-AS-001",
+        [
+            {"section":"1. Planning","item":"a","question":"Is the activity planned to be undertaken outside the next 24 hours?","response":"Yes","smart_action":""},
+            {"section":"4. Identifying the Correct WCC","item":"a","question":"Has the correct Type of WCC been selected appropriate for the task?","response":"Yes","smart_action":""},
+            {"section":"12. Isolation Requirements","item":"a","question":"Have all controls within the ICC been acknowledged and transferred to the WCC?","response":"Yes","smart_action":""},
+        ]
+    ))
+
+    # KPI 4 - W2W OOE and Medic/HSEA visits
+    records.append(rec(
+        "DEMO-TBT-OOE-001","Control of Work: Toolbox Talk, Permit Compliance & Operating Procedures","Northern W2W","Demo W2W OOE","DEMO-TBT-OOE-001",
+        [
+            {"section":"1. TBT Hazard Identification","item":"a","question":"TBT Lead discusses the hazards and controls associated to the task/activity","response":"Yes","smart_action":""},
+            {"section":"4. Permit Compliance","item":"a","question":"Is there an up-to-date copy of the WCC at the worksite and signed by all members of the work party?","response":"No","smart_action":"Confirm the current WCC is available at the worksite and obtain all required signatures."},
+        ]
+    ))
+    records.append(rec(
+        "DEMO-TBT-HSEA-001","Control of Work: Toolbox Talk, Permit Compliance & Operating Procedures","Southern W2W","Demo Medic HSEA","DEMO-TBT-HSEA-001",
+        [
+            {"section":"1. TBT Hazard Identification","item":"a","question":"TBT Lead discusses the hazards and controls associated to the task/activity","response":"Yes","smart_action":""},
+            {"section":"3. Hazards associated to the Worksite and Equipment","item":"c","question":"Are all access and egress points checked and clear?","response":"Yes","smart_action":""},
+        ]
+    ))
+    records.append(rec(
+        "DEMO-TBT-OIM-001","Control of Work: Toolbox Talk, Permit Compliance & Operating Procedures","Cleeton","Demo Field Hub OIM","DEMO-TBT-OIM-001",
+        [
+            {"section":"1. TBT Hazard Identification","item":"a","question":"TBT Lead discusses the hazards and controls associated to the task/activity","response":"Yes","smart_action":""},
+            {"section":"4. Permit Compliance","item":"a","question":"Is there an up-to-date copy of the WCC at the worksite and signed by all members of the work party?","response":"Yes","smart_action":""},
+        ]
+    ))
+
+    # KPI 3 - two synthetic leadership engagements in the current quarter.
+    records.append(rec(
+        "DEMO-LEAD-001","Control of Work Leadership Engagement Checklist","Northern W2W","Demo Operations Director","",
+        [
+            {"section":"Permit to Work (PTW)","question":"Are personnel able to explain the work they are undertaking?","response":"Yes","comments_evidence":"Clear understanding demonstrated."},
+            {"section":"Hazard Identification & Risk Assessment","question":"Can personnel explain the key hazards associated with the task?","response":"Yes","comments_evidence":"Key hazards understood."},
+            {"section":"Stop the Job Culture","question":"Do personnel understand their authority to stop the job?","response":"Yes","comments_evidence":"Stop-work authority understood."},
+        ],
+        "Meets CoW Standard",
+        {"overall_indicator":"Meets CoW Standard"}
+    ))
+    records.append(rec(
+        "DEMO-LEAD-002","Control of Work Leadership Engagement Checklist","Southern W2W","Demo Operations Director","",
+        [
+            {"section":"Permit to Work (PTW)","question":"Are personnel able to explain the work they are undertaking?","response":"Yes","comments_evidence":"Work scope understood."},
+            {"section":"Worksite Compliance","question":"Are permit controls being implemented at the worksite?","response":"Yes","comments_evidence":"Controls observed in place."},
+            {"section":"Stop the Job Culture","question":"Would personnel feel comfortable challenging unsafe conditions?","response":"Yes","comments_evidence":"Positive challenge culture evidenced."},
+        ],
+        "Meets CoW Standard",
+        {"overall_indicator":"Meets CoW Standard"}
+    ))
 
     c.executemany(
         "INSERT OR REPLACE INTO audits (audit_id,submitted_at,form_name,audit_date,site,auditor,reference,metadata,responses,summary) VALUES (?,?,?,?,?,?,?,?,?,?)",
-        demo_records
+        records
     )
 
     mappings=[
@@ -275,19 +274,22 @@ def seed_demo_data():
         ("permit","Demo Asset Superintendent","Asset Superintendent"),
         ("tbt","Demo W2W OOE","W2W OOE"),
         ("tbt","Demo Medic HSEA","Medic HSEA"),
-        ("lead","Demo Operations Director","Operations Director")
+        ("tbt","Demo Field Hub OIM","Field Hub OIM"),
+        ("lead","Demo Operations Director","Operations Director"),
     ]
     c.executemany(
         "INSERT OR REPLACE INTO role_mapping (mapping_type,person_name,role_name) VALUES (?,?,?)",
         mappings
     )
-    c.commit(); c.close()
+    c.commit()
+    c.close()
 
 def clear_demo_data():
     c=conn()
     c.execute("DELETE FROM audits WHERE audit_id LIKE 'DEMO-%'")
     c.execute("DELETE FROM role_mapping WHERE person_name LIKE 'Demo %'")
-    c.commit(); c.close()
+    c.commit()
+    c.close()
 
 def render_dashboard():
     st.markdown("""
@@ -312,13 +314,13 @@ def render_dashboard():
     d1,d2,_=st.columns([1.2,1.2,5])
     if d1.button("Load UAT demo data",use_container_width=True):
         seed_demo_data()
-        st.success("Synthetic UAT data loaded.")
+        st.success("Synthetic UAT dataset loaded.")
         st.rerun()
     if d2.button("Clear demo data",use_container_width=True):
         clear_demo_data()
-        st.success("Synthetic UAT data cleared.")
+        st.success("Synthetic UAT dataset cleared.")
         st.rerun()
-    st.caption("Demo records are labelled DEMO-* and are synthetic. Use only for testing dashboard behaviour.")
+    st.caption("Demo records are prefixed DEMO-* and are synthetic. They exist only to test KPI behaviour.")
 
     audits=load_audits()
     if not audits:
@@ -424,14 +426,16 @@ def render_dashboard():
     k3_question_conf=question_conformance(lead)
     if not lead or k3_conf is None:
         k3_status="Not enough data"
+    elif not quarter_complete:
+        k3_status="In progress"
     elif k3_conf<70:
         k3_status="Red"
     elif k3_visits>=3 and k3_conf>=90:
         k3_status="Green"
-    elif quarter_complete:
-        k3_status="Amber" if k3_visits==2 else "Red"
+    elif k3_visits==2:
+        k3_status="Amber"
     else:
-        k3_status="In progress"
+        k3_status="Red"
 
     # KPI 4 - audit-level conformance and role-based visit delivery.
     # Do not traffic-light the KPI while submitted TBT records remain unmapped.
@@ -495,7 +499,7 @@ def render_dashboard():
     if k1_status in ("Amber","Red"): notes.append(f"KPI 1 is {k1_status}: review Site Controller sampling delivery and permit conformance.")
     if k2_status in ("Amber","Red"): notes.append(f"KPI 2 is {k2_status}: review Asset Superintendent sampling delivery and permit conformance.")
     if k3_status in ("Amber","Red"): notes.append(f"KPI 3 is {k3_status}: review quarterly engagement volume, checklist conformance and NUI coverage.")
-    elif k3_status=="In progress": notes.append(f"KPI 3: Q{q} is in progress — {k3_visits} of 3 engagements completed with {k3_conf if k3_conf is not None else '—'}% checklist conformance.")
+    elif k3_status=="In progress": notes.append(f"KPI 3: Q{q} is in progress — {k3_visits} of 3 engagements completed; {k3_conf if k3_conf is not None else '—'}% of completed checklists currently meet the CoW standard.")
     if k4_status in ("Amber","Red"): notes.append(f"KPI 4 is {k4_status}: review site leadership visit delivery and Level 4 monitoring conformance.")
     elif k4_status=="In progress": notes.append(f"KPI 4: reporting period is in progress; weekly visit delivery and conformance are on track, with Field Hub OIM quarter delivery still open.")
     if not notes: notes.append("No intervention statement is generated until sufficient mapped data is available, or all calculated KPIs are Green.")
@@ -520,7 +524,7 @@ def render_dashboard():
             b.metric("Checklists meeting CoW standard",f"{k3_conf}%" if k3_conf is not None else "—")
             a.metric("Locations / teams",len(set(x["site"] for x in lead if x["site"])) if lead else "—")
             b.metric("Quarter",f"Q{q} · {'Complete' if quarter_complete else 'In progress'}" if lead else "—")
-            st.caption("Checklist compliance uses the form’s Overall Control of Work Indicator. Quarterly visit delivery is shown as in progress until the quarter has actually ended.")
+            st.caption("Checklist compliance uses the form’s Overall Control of Work Indicator. The KPI remains In progress until the quarter has actually ended; the current checklist result is shown separately for management attention.")
 
         with c2:
             st.subheader("KPI 2 – Asset Superintendent")
@@ -536,7 +540,7 @@ def render_dashboard():
             a.metric("W2W OOE",f"{role_counts['W2W OOE']} / {wks}" if mapping_ready else "Not mapped")
             b.metric("Medic / HSEA",f"{role_counts['Medic HSEA']} / {wks}" if mapping_ready else "Not mapped")
             a.metric("Field Hub OIM",f"{q_field_oim} / 1 quarter" if mapping_ready else "Not mapped")
-            b.metric("Level 4 audit conformance",f"{k4_conf}%" if k4_conf is not None else "—")
+            b.metric("Level 4 audit conformance",f"{k4_conf}%" if (mapping_ready and k4_conf is not None) else "—")
             st.caption("KPI 4 uses completed Level 4 audits as the compliance basis. Field Hub OIM is assessed against the quarterly target; the two-consecutive-quarter Red rule is applied where history is available.")
 
     with tab2:
